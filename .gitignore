@@ -1,0 +1,17 @@
+# file
+*.txt
+*/*.txt
+**/*.txt
+try.py
+*/try.py
+**/try.py
+
+# folder
+__pycache__
+*/__pycache__
+**/__pycache__
+frozen_model
+ckpt
+# try
+# */try
+# **/try
