@@ -4,7 +4,7 @@ import preprocess
 import tensorflow as tf
 from model import get_input_output_ckpt,unet
 from util import one_hot,dice,iflarger,ifsmaller,frozen_graph
-from preprocess import get_batch,read_train_data
+from preprocess import read_train_data,train_batch
 from sklearn.model_selection import train_test_split
 
 config = tf.ConfigProto()
@@ -26,15 +26,20 @@ train_path = os.path.join(root_path,"train",task_list[2])
 train_list = os.listdir(train_path)
 
 start = time.time()
-data,mask = read_train_data(train_path,train_list,15,True)
+data,mask = read_train_data(train_path,train_list)
 end = time.time()
-print("spend time:%.2fs\ndata_shape:{} mask_shape:{}".format(data.shape,mask.shape)%(end-start))
+data_train,data_valid,mask_train,mask_valid = train_test_split(data,mask,test_size=0.1,shuffle=True)
+print("spend time:%.2fs\ndata_train_shape:{} mask_train_shape:{}\ndata_valid_shape:\
+{} mask_valid_shape:".format(data_train.shape,mask_train.shape,data_valid.shape,mask_valid.shape)%(end-start))
+
 one_epoch_steps = data.shape[0]//batch_size
 
-data_train,data_valid,mask_train,mask_valid = train_test_split(data,mask,test_size=0.1,shuffle=True)
+train_batch_object, valid_batch_object = train_batch(data_train, mask_train, True, 15, num_class),\
+                                         train_batch(data_valid, mask_valid, True, 15, num_class)
+
 
 x,y_hat = get_input_output_ckpt(unet,input_shape,num_class)
-y = tf.placeholder(tf.float32,[None,224,224,num_class],name="label")
+y = tf.placeholder(tf.float32,[None,256,256,num_class],name="label")
 
 lr = tf.Variable(rate,name='learning_rate')
 decay_ops = tf.assign(lr,lr/2)
@@ -61,7 +66,7 @@ with tf.Session(config=config) as sess:
     valid_log = {"loss":{},"dice":{}}
     valid_log_epochwise = {"loss":[100000],"dice":[0]}
     learning_rate_descent_flag = 0
-    if(not os.path.exits("ckpt")):
+    if(not os.path.exists("ckpt")):
         os.mkdir("ckpt")
     if(not os.path.exists("frozen_model")):
         os.mkdir("frozen_model")
@@ -75,11 +80,11 @@ with tf.Session(config=config) as sess:
         for j in range(one_epoch_steps):
             # one step
             # get one batch data and label
-            train_batch_x,train_batch_y = get_batch(data_train,mask_train,batch_size)
+            train_batch_x,train_batch_y = train_batch_object.get_batch(batch_size)
             _ = sess.run(optimizer,feed_dict={x:train_batch_x,y:train_batch_y})
 
             if((j+1)%20==0):
-                valid_batch_x,valid_batch_y = get_batch(data_valid,mask_valid,batch_size)
+                valid_batch_x,valid_batch_y = valid_batch_object.get_batch(batch_size)
                 dic,los = sess.run([dice_index,loss],feed_dict={x:valid_batch_x,y:valid_batch_y})
                 valid_log["loss"][i].append(los)
                 valid_log["dice"][i].append(dic)

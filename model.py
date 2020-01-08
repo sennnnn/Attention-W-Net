@@ -105,14 +105,8 @@ if __name__ == "__main__":
     input = tf.placeholder(tf.float32, [None,224,224,1], name='input')
     out = unet(input)
     list = tf.global_variables()
-    # [print(x) for x in tf.global_variables()]
-    # print(len(tf.global_variables()))
-    # list = tf.global_variables()
-    # op = tf.assign(list[1],np.zeros(3))
+    [print(x) for x in tf.global_variables()]
+    print(len(tf.global_variables()))
     with tf.Session() as sess:
         graph = tf.get_default_graph()
-        print(list[0].graph)
         print(graph)
-        abc = tf.Graph()
-        print(abc)
-        # print(sess.run(ops))

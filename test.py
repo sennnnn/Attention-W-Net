@@ -50,7 +50,6 @@ def test_one_patient(one_patient_data,one_patient_mask,batch_size):
         while(1):
             number += 1
             batch,flag = batch_object.get_batch(batch_size)
-            print(batch,flag)
             if(not flag):
                 break
             batch_test_x,batch_test_y = batch[0],batch[1]
