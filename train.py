@@ -17,8 +17,8 @@ max_epoches = 200
 rate = 0.0001
 input_shape = (256,256)
 num_class = 7
-last = False
-start_epoch = 1
+last = True
+start_epoch = 26
 
 root_path = preprocess.root_path
 task_list = preprocess.task_list
@@ -26,16 +26,18 @@ train_path = os.path.join(root_path,"train",task_list[2])
 train_list = os.listdir(train_path)
 
 start = time.time()
-data,mask = read_train_data(train_path,train_list)
+data,mask = read_train_data(train_path,train_list,input_shape)
 end = time.time()
 data_train,data_valid,mask_train,mask_valid = train_test_split(data,mask,test_size=0.1,shuffle=True)
-print("spend time:%.2fs\ndata_train_shape:{} mask_train_shape:{}\ndata_valid_shape:\
-{} mask_valid_shape:".format(data_train.shape,mask_train.shape,data_valid.shape,mask_valid.shape)%(end-start))
+print("spend time:%.2fs\ndata_train_shape:{} mask_train_shape:{}\ndata_valid_shape:{}\
+ mask_valid_shape:{}".format(data_train.shape,mask_train.shape,data_valid.shape,mask_valid.shape)%(end-start))
 
 one_epoch_steps = data.shape[0]//batch_size
 
-train_batch_object, valid_batch_object = train_batch(data_train, mask_train, True, 15, num_class),\
-                                         train_batch(data_valid, mask_valid, True, 15, num_class)
+# 1~24 epoch 使用了随机水平竖直翻转、15°旋转，此时测试结果会有左右肺互相混淆的情况，这是因为左右肺的灰度太过于相似，并且小器官分割效果比较差
+# 25 epoch 开始使用10°旋转，并禁用翻转
+train_batch_object, valid_batch_object = train_batch(data_train, mask_train, False, 10, num_class),\
+                                         train_batch(data_valid, mask_valid, False, 10, num_class)
 
 
 x,y_hat = get_input_output_ckpt(unet,input_shape,num_class)
@@ -65,6 +67,7 @@ with tf.Session(config=config) as sess:
         saver.restore(sess,"ckpt/latest_model")
     valid_log = {"loss":{},"dice":{}}
     valid_log_epochwise = {"loss":[100000],"dice":[0]}
+    saved_valid_log_epochwise = {"loss":[100000],"dice":[0]}
     learning_rate_descent_flag = 0
     if(not os.path.exists("ckpt")):
         os.mkdir("ckpt")
@@ -82,7 +85,6 @@ with tf.Session(config=config) as sess:
             # get one batch data and label
             train_batch_x,train_batch_y = train_batch_object.get_batch(batch_size)
             _ = sess.run(optimizer,feed_dict={x:train_batch_x,y:train_batch_y})
-
             if((j+1)%20==0):
                 valid_batch_x,valid_batch_y = valid_batch_object.get_batch(batch_size)
                 dic,los = sess.run([dice_index,loss],feed_dict={x:valid_batch_x,y:valid_batch_y})
@@ -91,8 +93,10 @@ with tf.Session(config=config) as sess:
                 one_epoch_avg_loss += los/(one_epoch_steps//20)
                 one_epoch_avg_dice += dic/(one_epoch_steps//20)
                 show_string = "epoch:{} steps:{} valid_loss:{} valid_dice:{}".format(i+1,j+1,los,dic)
+                print(show_string)
+                temp.write(show_string+'\n')
         
-        show_string = "=======================================================\n \
+        show_string = "=======================================================\n\
 epoch_end: epoch:{} epoch_avg_loss:{} epoch_avg_dice:{}\n".format(i+1,one_epoch_avg_loss,one_epoch_avg_dice)
 
         if(iflarger(valid_log_epochwise["dice"],one_epoch_avg_dice)):
@@ -104,13 +108,16 @@ epoch_end: epoch:{} epoch_avg_loss:{} epoch_avg_dice:{}\n".format(i+1,one_epoch_
             sess.run(decay_ops)
             learning_rate_descent_flag = 0
         
-        
-        if(iflarger(valid_log_epochwise["dice"],one_epoch_avg_dice)):
-            show_string += "ckpt_model_save because of {}≥{}\n".format(valid_log_epochwise["dice"][-1],one_epoch_avg_dice)
+        if(iflarger(saved_valid_log_epochwise["dice"],one_epoch_avg_dice)):
+            show_string += "ckpt_model_save because of {}<={}\n".format(valid_log_epochwise["dice"][-1],one_epoch_avg_dice)
             saver.save(sess, "ckpt/latest_model")
             pb_name = "frozen_model/{}_%.3f.pb".format(i+1)%(one_epoch_avg_dice)
             show_string += "frozen_model_save {}\n".format(pb_name)
             show_string += frozen_graph(sess,pb_name)
+            saved_valid_log_epochwise['dice'].append(one_epoch_avg_dice)
+
+        if(ifsmaller(saved_valid_log_epochwise["loss"],one_epoch_avg_loss)):
+            saved_valid_log_epochwise['loss'].append(one_epoch_avg_loss)
 
         valid_log_epochwise["loss"].append(one_epoch_avg_loss)
         valid_log_epochwise["dice"].append(one_epoch_avg_dice)

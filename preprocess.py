@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 from util import one_hot
 
 task_list = ["HaN_OAR","Naso_GTV","Thoracic_OAR","Lung_GTV"]
-root_path = r"E:\dataset\datasets\zhongshan_hospital\cstro"
+root_path = r"E:\dataset\zhongshan_hospital\cstro"
 
 def readInformation(nii_path):
     image = stk.ReadImage(nii_path)
@@ -69,7 +69,7 @@ def _preprocess_oneslice(one_slice,filp,angle,random_state=None,flag="data"):
         out = (out-mean)/stdDev
     return out
 
-def read_train_data(train_path,train_list):
+def read_train_data(train_path,train_list,input_shape):
     """
     载入所有的训练数据
     """
@@ -80,13 +80,15 @@ def read_train_data(train_path,train_list):
         mask = readImage(os.path.join(train_path,patient,'label.nii'))
         for i,j in zip(data,mask):
             # 裁剪，裁剪是最优先的，是数据简化的最有效方式
-            one_data_slice = i[np.ix_(range(140,396),range(122,378))]
-            one_mask_slice = j[np.ix_(range(140,396),range(122,378))]
+            one_data_slice = i[np.ix_(range(117,417),range(99,399))]
+            one_mask_slice = j[np.ix_(range(117,417),range(99,399))]
+            one_data_slice = cv2.resize(one_data_slice.astype(np.float32),input_shape)
+            one_mask_slice = cv2.resize(one_mask_slice,input_shape)
             data_list.append(one_data_slice)
             mask_list.append(one_mask_slice)
     return np.array(data_list),np.array(mask_list)
 
-def read_test_data(test_path,test_list):
+def read_test_data(test_path,test_list,input_shape):
     """
     载入所有的测试数据，测试数据不需要做数据预处理
     """
@@ -98,8 +100,10 @@ def read_test_data(test_path,test_list):
         one_patient_data = []
         one_patient_mask = []
         for i,j in zip(data,mask):
-            one_data_slice = i[np.ix_(range(140,396),range(122,378))]
-            one_mask_slice = j[np.ix_(range(140,396),range(122,378))]
+            one_data_slice = i[np.ix_(range(117,417),range(99,399))]
+            one_mask_slice = j[np.ix_(range(117,417),range(99,399))]
+            one_data_slice = cv2.resize(one_data_slice.astype(np.float32),input_shape)
+            one_mask_slice = cv2.resize(one_mask_slice,input_shape)
             one_patient_data.append(one_data_slice)
             one_patient_mask.append(one_mask_slice)
         data_patients_list.append(np.array(one_patient_data))
@@ -144,8 +148,8 @@ class test_batch(object):
         data = data[start:end]
         mask = mask[start:end]
         for i,j in zip(data,mask):
-            temp_slice_data = _preprocess_oneslice(i,False,0,"data")
-            temp_slice_mask = _preprocess_oneslice(j,False,0,"mask")
+            temp_slice_data = _preprocess_oneslice(i,False,0,flag="data")
+            temp_slice_mask = _preprocess_oneslice(j,False,0,flag="mask")
             batch_data.append(temp_slice_data)
             batch_mask.append(temp_slice_mask)
         batch_data = np.expand_dims(np.array(batch_data),axis=-1)
@@ -168,6 +172,7 @@ class test_batch(object):
             return self.__do(self.data,self.mask,start,end),True
 
 if __name__ == "__main__":
+    # train batch get example
     train_path = os.path.join(root_path,"train",task_list[2])
     train_list = os.listdir(train_path)
     start = time.time()
@@ -176,8 +181,7 @@ if __name__ == "__main__":
     data_train,data_valid,mask_train,mask_valid = train_test_split(data,mask,test_size=0.1,shuffle=True)
     print("spend time:%.2fs\ndata_shape:{} mask_shape:{}".format(data.shape,mask.shape)%(end-start))
     train_batch_object,valid_batch_object = train_batch(data_train,mask_train,True,15,7),train_batch(data_valid,mask_valid,True,15,7)
-    # data = readImage(os.path.join(train_path,train_list[0],"data.nii"))
-    # mask = readImage(os.path.join(train_path,train_list[0],"label.nii"))
+    # begin show
     while(1):
         batch_train_x,batch_train_y = train_batch_object.get_batch(1)
         batch_valid_x,batch_valid_y = valid_batch_object.get_batch(1)
@@ -205,3 +209,23 @@ if __name__ == "__main__":
             plt.title("{}x{}".format(*tuple(m.shape[0:2])))
             plt.axis('off')
             plt.show()
+    # test_path = os.path.join(root_path,"test",task_list[2])
+    # test_list = os.listdir(test_path)
+    # start = time.time()
+    # data,mask = read_test_data(test_path,test_list)
+    # for one_patient_data,one_patient_mask in zip(data,mask):
+    #     batch_object = test_batch(one_patient_data,one_patient_mask,7)
+    #     while(1):
+    #         one_batch,flag = batch_object.get_batch(1)
+    #         if(not flag):
+    #             break
+    #         one_batch_data,one_batch_mask = one_batch[0],one_batch[1]
+    #         print(one_batch_data,one_batch_mask)
+    #         plt.subplot(121)
+    #         plt.imshow(one_batch_data[2,:,:,0],cmap='gray')
+    #         plt.axis('off')
+    #         plt.subplot(122)
+    #         plt.imshow(np.argmax(one_batch_mask[2],axis=-1),cmap='gray')
+    #         plt.axis('off')
+
+            

@@ -14,27 +14,27 @@ task_list = preprocess.task_list
 test_path = os.path.join(root_path,"test",task_list[2])
 test_list = os.listdir(test_path)
 
+# hyper parameters
+input_shape = (256,256)
+num_class = 7
+
 start = time.time()
-data,mask = read_test_data(test_path,test_list)
+data,mask = read_test_data(test_path,test_list,input_shape)
 end = time.time()
 print("spend time:%.2fs\ndata_shape:{} mask_shape:{}".format(data.shape,mask.shape)%(end-start))
 
 # batch_object = test_batch()
 
 def test_one_patient(one_patient_data,one_patient_mask,batch_size):
-    # hyper parameters
-    input_shape = (224,224)
-    num_class = 7
-
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     session = tf.InteractiveSession(config=config)
 
     # batch对象只能走一个轮回就结束了，单个病人不能循环
-    batch_object = test_batch(one_patient_data,one_patient_mask)
+    batch_object = test_batch(one_patient_data,one_patient_mask,num_class)
 
     x,y_hat = get_input_output_ckpt(unet,input_shape,num_class)
-    y = tf.placeholder(tf.float32,[None,224,224,7],name="label")
+    y = tf.placeholder(tf.float32,[None,256,256,7],name="label")
     y_softmax = tf.get_default_graph().get_tensor_by_name("softmax_y:0")
     y_result = tf.get_default_graph().get_tensor_by_name("segementation_result:0")
 
@@ -53,16 +53,18 @@ def test_one_patient(one_patient_data,one_patient_mask,batch_size):
             if(not flag):
                 break
             batch_test_x,batch_test_y = batch[0],batch[1]
-            plt.subplot(121)
-            plt.imshow(batch_test_x[2,:,:,0],cmap='gray')
+            plt.subplot(221)
+            plt.imshow(batch_test_x[0,:,:,0],cmap='gray')
             plt.axis('off')
-            plt.subplot(122)
-            plt.imshow(np.argmax(batch_test_y[2],axis=-1),cmap='gray')
+            plt.subplot(222)
+            plt.imshow(np.argmax(batch_test_y[0],axis=-1),cmap='gray')
             plt.axis('off')
             result,dic = sess.run([y_result,dice_index], feed_dict={x:batch_test_x,y:batch_test_y})
-            temp = random.randint(0,3)
-            plt.figure()
-            plt.imshow(result[temp],cmap='gray')
+            plt.subplot(223)
+            plt.imshow(batch_test_x[0,:,:,0],cmap='gray')
+            plt.axis('off')
+            plt.subplot(224)
+            plt.imshow(result[0],cmap='gray')
             plt.axis('off')
             plt.title("dice:%.3f"%(dic))
             plt.show()
