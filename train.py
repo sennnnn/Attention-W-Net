@@ -3,7 +3,7 @@ import time
 import preprocess
 import tensorflow as tf
 from model import get_input_output_ckpt,unet
-from util import one_hot,dice,iflarger,ifsmaller,frozen_graph
+from util import one_hot,dice,iflarger,ifsmaller,frozen_graph,load_graph,get_newest,restore_from_pb
 from preprocess import read_train_data,train_batch
 from sklearn.model_selection import train_test_split
 
@@ -17,8 +17,9 @@ max_epoches = 200
 rate = 0.0001
 input_shape = (256,256)
 num_class = 7
-last = True
-start_epoch = 31
+last = True            # last为False，那么pattern就失去作用了，因为一切都将重新开始
+start_epoch = 35
+pattern = "pb"
 
 root_path = preprocess.root_path
 task_list = preprocess.task_list
@@ -39,33 +40,69 @@ one_epoch_steps = data.shape[0]//batch_size
 train_batch_object, valid_batch_object = train_batch(data_train, mask_train, False, 10, num_class),\
                                          train_batch(data_valid, mask_valid, False, 10, num_class)
 
-
-x,y_hat = get_input_output_ckpt(unet,input_shape,num_class)
-y = tf.placeholder(tf.float32,[None,256,256,num_class],name="label")
-
-lr = tf.Variable(rate,name='learning_rate')
-decay_ops = tf.assign(lr,lr/2)
-
-y_softmax = tf.get_default_graph().get_tensor_by_name("softmax_y:0")
-y_result = tf.get_default_graph().get_tensor_by_name("segementation_result:0")
-
-loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y,logits=y_hat),name="loss")
-optimizer = tf.train.AdamOptimizer(learning_rate=lr).minimize(loss)
-
-with tf.name_scope("dice"):
-    dice_index = dice(y_softmax,y)
-
-init = tf.global_variables_initializer()
-saver = tf.train.Saver()
 if not os.path.exists("train_valid.log"):
     temp = open("train_valid.log","w")
 else:
     temp = open("train_valid.log","a")
 
-with tf.Session(config=config) as sess:
+graph = tf.Graph()
+if(pattern != "ckpt" and pattern != "pb"):
+    print("The pattern must be ckpt or pb.")
+    exit()
+else:
+    if(pattern == "ckpt" or last == False):
+        with graph.as_default():
+            x,y_hat = get_input_output_ckpt(unet,input_shape,num_class)
+            y = tf.placeholder(tf.float32,[None,256,256,num_class],name="label")
+
+            lr = tf.Variable(rate,name='learning_rate')
+            decay_ops = tf.assign(lr,lr/2,name='learning_rate_decay')
+
+            y_softmax = tf.get_default_graph().get_tensor_by_name("softmax_y:0")
+            y_result = tf.get_default_graph().get_tensor_by_name("segementation_result:0")
+
+            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y,logits=y_hat),name="loss")
+            optimizer = tf.train.AdamOptimizer(learning_rate=lr).minimize(loss)
+            with tf.name_scope("dice"):
+                dice_index = dice(y_softmax,y)
+    else:
+        if(len([x for x in os.listdir("frozen_model") if(os.path.splitext(x) == ".pb")])):
+            print("sorry,there is not pb file.")
+            exit()
+        else:
+            # 本来frozen_model一般用来进行测试，但是可以强行将已经被固定为常量的变量逆转化为变量。
+            # frozen_model与checkpoint_model除了常量和变量的op在计算图上有区别之外其他都是一样的。
+            # 一个常量仅有read一个op，而变量却有read、initial、assign三个op
+            # 主要是卷积层和batch_norm层，卷积层主要有卷积核和偏置两个变量，而batch_norm主要有均值、方差、映射斜率gama和映射偏置beta
+            # AdamOptimizer这一操作会直接将之前所有变量根据链式法则都创建一个梯度，无论是卷积、batch_norm还是激活函数都有梯度
+            # 从pb文件中加载获得常量之后，然后根据常量在新图中再构建一次，将这些常量的值赋给元图
+            saver = tf.train.import_meta_graph('ckpt/latest_model.meta')
+            meta_graph = tf.get_default_graph()
+            x = meta_graph.get_tensor_by_name("input:0")
+            y = meta_graph.get_tensor_by_name("label:0")
+            y_softmax = meta_graph.get_tensor_by_name("softmax_y:0")
+            y_result = meta_graph.get_tensor_by_name("segementation_result:0")
+            loss = meta_graph.get_tensor_by_name('loss:0')
+            lr = meta_graph.get_tensor_by_name('learning_rate:0')
+            decay_ops = meta_graph.get_tensor_by_name('learning_rate_decay:0')
+            optimizer = meta_graph.get_operation_by_name("Adam")
+            dice_index = meta_graph.get_tensor_by_name("dice/truediv:0")
+            graph = meta_graph
+
+with graph.as_default():
+    init = tf.global_variables_initializer()
+    saver = tf.train.Saver()
+    sess = tf.Session(config=config,graph=graph)
     sess.run(init)
     if(last==True):
-        saver.restore(sess,"ckpt/latest_model")
+        if(pattern=="ckpt"):
+            saver.restore(sess,"ckpt/latest_model")
+        else:
+            pb_name = get_newest("frozen_model")
+            print("{},the latest frozen graph is loaded...".format(pb_name))
+            frozen_graph = load_graph(pb_name)
+            sess = restore_from_pb(sess, frozen_graph, meta_graph)
+
     valid_log = {"loss":{},"dice":{}}
     valid_log_epochwise = {"loss":[100000],"dice":[0]}
     saved_valid_log_epochwise = {"loss":[100000],"dice":[0]}
@@ -98,15 +135,15 @@ with tf.Session(config=config) as sess:
                 temp.write(show_string+'\n')
         
         show_string = "=======================================================\n\
-epoch_end: epoch:{} epoch_avg_loss:{} epoch_avg_dice:{}\n".format(i+1,one_epoch_avg_loss,one_epoch_avg_dice)
+    epoch_end: epoch:{} epoch_avg_loss:{} epoch_avg_dice:{}\n".format(i+1,one_epoch_avg_loss,one_epoch_avg_dice)
 
         if(iflarger(valid_log_epochwise["dice"],one_epoch_avg_dice)):
             learning_rate_descent_flag += 1
         
         if(learning_rate_descent_flag == 3):
-            show_string += "learning rate decay from {} to {}\n".format(rate,rate/2)
-            rate = rate/2
-            sess.run(decay_ops)
+            rate_once = rate
+            _,rate = sess.run([decay_ops,lr])
+            show_string += "learning rate decay from {} to {}\n".format(rate_once,rate)
             learning_rate_descent_flag = 0
         
         if(iflarger(saved_valid_log_epochwise["dice"],one_epoch_avg_dice)):
@@ -129,3 +166,4 @@ epoch_end: epoch:{} epoch_avg_loss:{} epoch_avg_dice:{}\n".format(i+1,one_epoch_
         temp.close()
     saver.save(sess, "ckpt/latest_model")
     frozen_graph(sess,"last.pb")
+    sess.close()
