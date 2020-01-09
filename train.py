@@ -18,7 +18,7 @@ rate = 0.0001
 input_shape = (256,256)
 num_class = 7
 last = True
-start_epoch = 26
+start_epoch = 31
 
 root_path = preprocess.root_path
 task_list = preprocess.task_list
@@ -52,7 +52,8 @@ y_result = tf.get_default_graph().get_tensor_by_name("segementation_result:0")
 loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y,logits=y_hat),name="loss")
 optimizer = tf.train.AdamOptimizer(learning_rate=lr).minimize(loss)
 
-dice_index = dice(y_softmax,y)
+with tf.name_scope("dice"):
+    dice_index = dice(y_softmax,y)
 
 init = tf.global_variables_initializer()
 saver = tf.train.Saver()
@@ -109,7 +110,7 @@ epoch_end: epoch:{} epoch_avg_loss:{} epoch_avg_dice:{}\n".format(i+1,one_epoch_
             learning_rate_descent_flag = 0
         
         if(iflarger(saved_valid_log_epochwise["dice"],one_epoch_avg_dice)):
-            show_string += "ckpt_model_save because of {}<={}\n".format(valid_log_epochwise["dice"][-1],one_epoch_avg_dice)
+            show_string += "ckpt_model_save because of {}<={}\n".format(saved_valid_log_epochwise["dice"][-1],one_epoch_avg_dice)
             saver.save(sess, "ckpt/latest_model")
             pb_name = "frozen_model/{}_%.3f.pb".format(i+1)%(one_epoch_avg_dice)
             show_string += "frozen_model_save {}\n".format(pb_name)
