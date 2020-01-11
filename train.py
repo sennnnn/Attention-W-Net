@@ -19,7 +19,7 @@ input_shape = (256,256)
 num_class = 7
 last = True            # last为False，那么pattern就失去作用了，因为一切都将重新开始
 start_epoch = 55
-pattern = "ckpt"
+pattern = "pb"
 
 root_path = preprocess.root_path
 task_list = preprocess.task_list
@@ -37,8 +37,9 @@ one_epoch_steps = data.shape[0]//batch_size
 
 # 1~24 epoch 使用了随机水平竖直翻转、15°旋转，此时测试结果会有左右肺互相混淆的情况，这是因为左右肺的灰度太过于相似，并且小器官分割效果比较差
 # 25 epoch 开始使用10°旋转，并禁用翻转
-train_batch_object, valid_batch_object = train_batch(data_train, mask_train, False, 10, num_class),\
-                                         train_batch(data_valid, mask_valid, False, 10, num_class)
+# 55 epoch 开始使用5°旋转
+train_batch_object, valid_batch_object = train_batch(data_train, mask_train, False, 5, num_class),\
+                                         train_batch(data_valid, mask_valid, False, 5, num_class)
 
 if not os.path.exists("train_valid.log"):
     temp = open("train_valid.log","w")
@@ -88,7 +89,7 @@ else:
             y_result = meta_graph.get_tensor_by_name("segementation_result:0")
             loss = meta_graph.get_tensor_by_name('loss:0')
             lr = meta_graph.get_tensor_by_name('learning_rate:0')
-            init_rate = meta_graph.get_operation_by_name('initial_lr')
+            init_ops = meta_graph.get_operation_by_name('initial_lr')
             decay_ops = meta_graph.get_operation_by_name('learning_rate_decay')
             optimizer = meta_graph.get_operation_by_name("Adam")
             dice_index = meta_graph.get_tensor_by_name("dice:0")

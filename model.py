@@ -87,9 +87,9 @@ def unet(input,num_class):
     input = DBR(input,num_class,kernel_size=1)
     return input
 
-def get_input_output_ckpt(unet,input_shape,num_class):
+def get_input_output_ckpt(unet,num_class):
     x = tf.placeholder(tf.float32, [None, None, None, 1],name='input_x')
-    with tf.name_scope('unet'):
+    with tf.variable_scope('unet'):
         y = unet(x,num_class)
     y_softmax = tf.nn.softmax(y,name='softmax_y')
     y_result  = tf.argmax(y_softmax,axis=-1,name='segementation_result')
@@ -101,13 +101,15 @@ def get_input_output_pb(frozen_graph):
         y_result = graph.get_tensor_by_name("segementation_result:0")
     return x,y_result
 
-
 if __name__ == "__main__":
-    input = tf.placeholder(tf.float32, [None,224,224,1], name='input')
-    out = unet(input)
-    list = tf.global_variables()
-    [print(x) for x in tf.global_variables()]
-    print(len(tf.global_variables()))
+    # input = tf.placeholder(tf.float32, [None,256,256,1], name='input_x')
+    out = get_input_output_ckpt(unet, (256,256), 7)
+    # list = tf.global_variables()
+    # [print(x) for x in tf.global_variables()]
+    # print(len(tf.global_variables()))
     with tf.Session() as sess:
         graph = tf.get_default_graph()
-        print(graph)
+        ops = graph.get_operations()
+        temp = open('abc.txt','w')
+        [temp.write(x.name+'\n') for x in ops]
+        temp.close()

@@ -35,20 +35,32 @@ def restore_from_pb(sess,frozen_graph,meta_graph):
     ops = frozen_graph.get_operations()
     ops_restore = [x.name.replace('/read','') for x in ops if('/read' in x.name)]
     tensors_constant = [frozen_graph.get_tensor_by_name(x+':0') for x in ops_restore]
-    tensors_variables = [meta_graph.get_tensor_by_name(x+':0') for x in ops_restore]
+    tensors_variables = []
+    for x in ops_restore:
+        temp=""
+        temp += x
+        if('unet' not in x):
+            temp = 'unet/' + x
+        tensors_variables.append(meta_graph.get_tensor_by_name(temp+':0'))
+    print(len(ops_restore),len(tensors_variables))
+    # tensors_variables = [meta_graph.get_tensor_by_name(x+':0') for x in ops_restore]
     do_list = []
     sess_local = tf.Session(graph=frozen_graph)
     for i in range(len(ops_restore)):
         temp = sess_local.run(tensors_constant[i])
+        # print(sess.run(tf.assign(tensors_variables[i],temp)))
         do_list.append(tf.assign(tensors_variables[i],temp))
     sess_local.close()
     sess.run(do_list)
     return sess
 
 def frozen_graph(sess, output_graph):
+    print(output_graph)
+    print(tf.get_default_graph().get_operations())
     output_graph_def = tf.graph_util.convert_variables_to_constants(sess, # 因为计算图上只有ops没有变量，所以要通过会话，来获得变量有哪些
                                                                    tf.get_default_graph().as_graph_def(),
                                                                    ["segementation_result","dice"])
+
     with open(output_graph,"wb") as f:
         f.write(output_graph_def.SerializeToString())
 
