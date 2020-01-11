@@ -88,8 +88,9 @@ def unet(input,num_class):
     return input
 
 def get_input_output_ckpt(unet,input_shape,num_class):
-    x = tf.placeholder(tf.float32, [None, *input_shape, 1],name='input')
-    y = unet(x,num_class)
+    x = tf.placeholder(tf.float32, [None, None, None, 1],name='input_x')
+    with tf.name_scope('unet'):
+        y = unet(x,num_class)
     y_softmax = tf.nn.softmax(y,name='softmax_y')
     y_result  = tf.argmax(y_softmax,axis=-1,name='segementation_result')
     return x,y

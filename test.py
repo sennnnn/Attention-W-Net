@@ -6,7 +6,7 @@ import tensorflow as tf
 import numpy as np
 from preprocess import test_batch,read_test_data
 from model import unet,get_input_output_ckpt
-from util import dice
+from util import dice,load_graph,get_newest
 import matplotlib.pyplot as plt
 
 root_path = preprocess.root_path
@@ -30,26 +30,31 @@ config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 session = tf.InteractiveSession(config=config)
 
-# # 下面这一大波操作其实都是在构建计算图而已
+# # 下面这一大波操作其实都是在构建计算图而已，使用ckpt
 # x,y_hat = get_input_output_ckpt(unet,input_shape,num_class)
-# y = tf.placeholder(tf.float32,[None, *input_shape, num_class],name="label")
+# y = tf.placeholder(tf.float32,[None, *input_shape, num_class],name="input_y")
 # y_softmax = tf.get_default_graph().get_tensor_by_name("softmax_y:0")
 # y_result = tf.get_default_graph().get_tensor_by_name("segementation_result:0")
 
-# 这样构建计算图可以省去繁琐的原始网络结构定义
-saver = tf.train.import_meta_graph("ckpt/latest_model.meta")
-x = tf.get_default_graph().get_tensor_by_name("input:0")
-y = tf.get_default_graph().get_tensor_by_name("label:0")
-y_softmax = tf.get_default_graph().get_tensor_by_name("softmax_y:0")
-y_result = tf.get_default_graph().get_tensor_by_name("segementation_result:0")
+# 这样构建计算图可以省去繁琐的原始网络结构定义，使用meta图
+# saver = tf.train.import_meta_graph("ckpt/latest_model.meta")
+# graph = tf.get_default_graph()
+
+# 使用frozen_model
+graph = load_graph(get_newest("frozen_model"))
+
+x = graph.get_tensor_by_name("input_x:0")
+y = graph.get_tensor_by_name("input_y:0")
+y_softmax = graph.get_tensor_by_name("softmax_y:0")
+y_result = graph.get_tensor_by_name("segementation_result:0")
 
 # dice这个ops scope在epoch 30之前没有所以epoch 30之前要自己定义，因为我找不到是哪一个
-# epoch 30之后我做了name_scope的标记所以能够找到
-dice_index = dice(y_softmax,y)
+# epoch 30之后我做了name_scope的标记所以能够找到，epoch38之后学会了identity了,然而epoch55之前都没有在frozen_model中
+# 保存dice这个节点
+dice_index = graph.get_tensor_by_name("dice:0")
 
-saver = tf.train.Saver()
 init = tf.global_variables_initializer()
-with tf.Session(config=config) as sess:
+with tf.Session(config=config,graph=graph) as sess:
     sess.run(init)
     # 没有ckpt模型restore会失败，程序会退出，而之后也不会执行
     saver.restore(sess, "ckpt/latest_model")

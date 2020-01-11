@@ -48,7 +48,7 @@ def restore_from_pb(sess,frozen_graph,meta_graph):
 def frozen_graph(sess, output_graph):
     output_graph_def = tf.graph_util.convert_variables_to_constants(sess, # 因为计算图上只有ops没有变量，所以要通过会话，来获得变量有哪些
                                                                    tf.get_default_graph().as_graph_def(),
-                                                                   ["segementation_result"])
+                                                                   ["segementation_result","dice"])
     with open(output_graph,"wb") as f:
         f.write(output_graph_def.SerializeToString())
 

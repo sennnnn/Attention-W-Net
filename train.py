@@ -14,12 +14,12 @@ session = tf.InteractiveSession(config=config)
 # hyper parameters
 batch_size = 4
 max_epoches = 200
-rate = 0.0001
+rate = 0.00001
 input_shape = (256,256)
 num_class = 7
 last = True            # last为False，那么pattern就失去作用了，因为一切都将重新开始
-start_epoch = 35
-pattern = "pb"
+start_epoch = 55
+pattern = "ckpt"
 
 root_path = preprocess.root_path
 task_list = preprocess.task_list
@@ -53,9 +53,12 @@ else:
     if(pattern == "ckpt" or last == False):
         with graph.as_default():
             x,y_hat = get_input_output_ckpt(unet,input_shape,num_class)
-            y = tf.placeholder(tf.float32,[None,256,256,num_class],name="label")
+            y = tf.placeholder(tf.float32,[None, None, None, num_class],name="input_y")
+            lr_init = tf.placeholder(tf.float32,name='input_lr')
 
             lr = tf.Variable(rate,name='learning_rate')
+            init_ops = tf.assign(lr,lr_init,name='initial_lr')
+            
             decay_ops = tf.assign(lr,lr/2,name='learning_rate_decay')
 
             y_softmax = tf.get_default_graph().get_tensor_by_name("softmax_y:0")
@@ -63,8 +66,9 @@ else:
 
             loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y,logits=y_hat),name="loss")
             optimizer = tf.train.AdamOptimizer(learning_rate=lr).minimize(loss)
-            with tf.name_scope("dice"):
-                dice_index = dice(y_softmax,y)
+            
+            dice_index = dice(y_softmax,y)
+            dice_index_indentity = tf.identity(dice_index,name="dice")
     else:
         if(len([x for x in os.listdir("frozen_model") if(os.path.splitext(x) == ".pb")])):
             print("sorry,there is not pb file.")
@@ -78,15 +82,16 @@ else:
             # 从pb文件中加载获得常量之后，然后根据常量在新图中再构建一次，将这些常量的值赋给元图
             saver = tf.train.import_meta_graph('ckpt/latest_model.meta')
             meta_graph = tf.get_default_graph()
-            x = meta_graph.get_tensor_by_name("input:0")
-            y = meta_graph.get_tensor_by_name("label:0")
+            x = meta_graph.get_tensor_by_name("input_x:0")
+            y = meta_graph.get_tensor_by_name("input_y:0")
             y_softmax = meta_graph.get_tensor_by_name("softmax_y:0")
             y_result = meta_graph.get_tensor_by_name("segementation_result:0")
             loss = meta_graph.get_tensor_by_name('loss:0')
             lr = meta_graph.get_tensor_by_name('learning_rate:0')
-            decay_ops = meta_graph.get_tensor_by_name('learning_rate_decay:0')
+            init_rate = meta_graph.get_operation_by_name('initial_lr')
+            decay_ops = meta_graph.get_operation_by_name('learning_rate_decay')
             optimizer = meta_graph.get_operation_by_name("Adam")
-            dice_index = meta_graph.get_tensor_by_name("dice/truediv:0")
+            dice_index = meta_graph.get_tensor_by_name("dice:0")
             graph = meta_graph
 
 with graph.as_default():
@@ -100,13 +105,14 @@ with graph.as_default():
         else:
             pb_name = get_newest("frozen_model")
             print("{},the latest frozen graph is loaded...".format(pb_name))
-            frozen_graph = load_graph(pb_name)
-            sess = restore_from_pb(sess, frozen_graph, meta_graph)
+            pb_graph = load_graph(pb_name)
+            sess = restore_from_pb(sess, pb_graph, meta_graph)
 
     valid_log = {"loss":{},"dice":{}}
     valid_log_epochwise = {"loss":[100000],"dice":[0]}
     saved_valid_log_epochwise = {"loss":[100000],"dice":[0]}
     learning_rate_descent_flag = 0
+    sess.run(init_ops,feed_dict={"input_lr:0":rate})
     if(not os.path.exists("ckpt")):
         os.mkdir("ckpt")
     if(not os.path.exists("frozen_model")):
@@ -125,12 +131,12 @@ with graph.as_default():
             _ = sess.run(optimizer,feed_dict={x:train_batch_x,y:train_batch_y})
             if((j+1)%20==0):
                 valid_batch_x,valid_batch_y = valid_batch_object.get_batch(batch_size)
-                dic,los = sess.run([dice_index,loss],feed_dict={x:valid_batch_x,y:valid_batch_y})
+                dic,los,rate = sess.run([dice_index,loss,lr],feed_dict={x:valid_batch_x,y:valid_batch_y})
                 valid_log["loss"][i].append(los)
                 valid_log["dice"][i].append(dic)
                 one_epoch_avg_loss += los/(one_epoch_steps//20)
                 one_epoch_avg_dice += dic/(one_epoch_steps//20)
-                show_string = "epoch:{} steps:{} valid_loss:{} valid_dice:{}".format(i+1,j+1,los,dic)
+                show_string = "epoch:{} steps:{} valid_loss:{} valid_dice:{} learning_rate:{}".format(i+1,j+1,los,dic,rate)
                 print(show_string)
                 temp.write(show_string+'\n')
         
@@ -142,7 +148,8 @@ with graph.as_default():
         
         if(learning_rate_descent_flag == 3):
             rate_once = rate
-            _,rate = sess.run([decay_ops,lr])
+            _ = sess.run(decay_ops)
+            rate = sess.run(lr)
             show_string += "learning rate decay from {} to {}\n".format(rate_once,rate)
             learning_rate_descent_flag = 0
         
