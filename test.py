@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 from process import test_batch,after_process,root_path, \
                     task_list,recover
 from model import unet,get_input_output_ckpt
-from util import dice,load_graph,get_newest,restore_from_pb,\
-                 one_hot,readNiiAll,saveAsNiiGz,readImage,dice_index_norm,dice
+from util import tf_dice,tf_dice_index_norm,load_graph,get_newest,restore_from_pb,\
+                 one_hot,readNiiAll,saveAsNiiGz,readImage,np_dice_index
 
 test_path = os.path.join(root_path,"test",task_list[2])
 test_list = os.listdir(test_path)
@@ -97,11 +97,17 @@ with graph.as_default():
             del batch_object
             gc.collect()
             temp = recover(patient_mask_predict,one_patient_data.shape)
+            real = one_hot(one_patient_mask,7)
+            dic_norm = np_dice_index(temp,real)
+            print("patient{}:{}".format(one_patient,dic_norm))
+            out_txt.write("patient{}:{}\n".format(one_patient,dic_norm))
             temp = np.argmax(temp,axis=-1)
             saveAsNiiGz(temp, os.path.join(test_root_task_single_patient_path ,"test_label.nii.gz"), Spacing, Origin)
+            del real
             del temp
             gc.collect()
         sess.close()
+        out_txt.close()
     else:
         # several shot model
         for one_patient_data,one_patient_mask in block_fused:
@@ -123,7 +129,7 @@ with graph.as_default():
                 plt.imshow(np.argmax(batch_test_y[0],axis=-1),cmap='gray')
                 plt.title('Groudtruth')
                 plt.axis('off')
-                result,dic,dic_norm = sess.run([y_result,dice_index,dice_index_norm(y_softmax,y)], \
+                result,dic,dic_norm = sess.run([y_result,dice_index,tf_dice_index_norm(y_softmax,y)], \
                                                 feed_dict={x:batch_test_x,y:batch_test_y})
                 plt.subplot(133)
                 plt.imshow(result[0],cmap='gray')
@@ -137,13 +143,12 @@ with graph.as_default():
             print(number)
 
 if(ifout):
-    # 由于内存不足所以只能出此下策，让上面的内存回收再来算dice
-    # 下面这一块属实内存不够
     for one_patient in test_list:
-        one_patient_mask = readImage(os.path.join(test_path, one_patient,'label.nii'))
+        real = readImage(os.path.join(test_path,one_patient,'label.nii'))    
+        temp = readImage(os.path.join(test_result_root_task_path,one_patient,'test_label.nii'))
         real = one_hot(one_patient_mask,7)
-        temp = readImage(os.path.join(test_result_root_task_path, one_patient,'test_label.nii'))
         temp = one_hot(temp,7)
-        dic_norm = dice(temp.astype(np.float32),real.astype(np.float32))
+        dic_norm = np_dice_index(temp,real)
+        print("patient{}:{}\n".format(one_patient,dic_norm))
         out_txt.write("patient{}:{}\n".format(one_patient,dic_norm))
     out_txt.close()
