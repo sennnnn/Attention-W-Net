@@ -11,9 +11,14 @@ __pycache__
 */__pycache__
 **/__pycache__
 frozen_model
+*/frozen_model
+**/frozen_model
 ckpt
-archieve
+*/ckpt
+**/ckpt
 .vscode
+*/.vscode
+**/.vscode
 # try
 # */try
 # **/try
