@@ -2,9 +2,11 @@ import os
 import time
 import preprocess
 import tensorflow as tf
+
 from model import get_input_output_ckpt,unet
-from util import one_hot,dice,iflarger,ifsmaller,frozen_graph,load_graph,get_newest,restore_from_pb
-from preprocess import read_train_data,train_batch
+from util import one_hot,dice,iflarger,ifsmaller,frozen_graph,load_graph,\
+                 get_newest,restore_from_pb
+from process import read_train_data, train_batch, root_path, task_list
 from sklearn.model_selection import train_test_split
 
 config = tf.ConfigProto()
@@ -18,11 +20,9 @@ rate = 0.00001
 input_shape = (256,256)
 num_class = 7
 last = True            # last为False，那么pattern就失去作用了，因为一切都将重新开始
-start_epoch = 55
+start_epoch = 67
 pattern = "pb"
 
-root_path = preprocess.root_path
-task_list = preprocess.task_list
 train_path = os.path.join(root_path,"train",task_list[2])
 train_list = os.listdir(train_path)
 
@@ -38,8 +38,8 @@ one_epoch_steps = data.shape[0]//batch_size
 # 1~24 epoch 使用了随机水平竖直翻转、15°旋转，此时测试结果会有左右肺互相混淆的情况，这是因为左右肺的灰度太过于相似，并且小器官分割效果比较差
 # 25 epoch 开始使用10°旋转，并禁用翻转
 # 55 epoch 开始使用5°旋转
-train_batch_object, valid_batch_object = train_batch(data_train, mask_train, False, 5, num_class),\
-                                         train_batch(data_valid, mask_valid, False, 5, num_class)
+train_batch_object, valid_batch_object = train_batch(data_train, mask_train, False, 0, num_class),\
+                                         train_batch(data_valid, mask_valid, False, 0, num_class)
 
 if not os.path.exists("train_valid.log"):
     temp = open("train_valid.log","w")
@@ -142,7 +142,7 @@ with graph.as_default():
                 temp.write(show_string+'\n')
         
         show_string = "=======================================================\n\
-    epoch_end: epoch:{} epoch_avg_loss:{} epoch_avg_dice:{}\n".format(i+1,one_epoch_avg_loss,one_epoch_avg_dice)
+epoch_end: epoch:{} epoch_avg_loss:{} epoch_avg_dice:{}\n".format(i+1,one_epoch_avg_loss,one_epoch_avg_dice)
 
         if(iflarger(valid_log_epochwise["dice"],one_epoch_avg_dice)):
             learning_rate_descent_flag += 1
