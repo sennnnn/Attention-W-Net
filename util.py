@@ -115,23 +115,31 @@ def one_hot(nparray, depth=0, on_value=1, off_value=0):
     out[tuple(indices)] = on_value
     return out
 
-def dice(A,B,smooth=0.00001):
-    A_area = tf.reduce_sum(A[...,1:])
-    B_area = tf.reduce_sum(B[...,1:])
-    cross_area = tf.reduce_sum(A[...,1:]*B[...,1:])
-    return 2*cross_area/(A_area+B_area+smooth)
-
 def np_dice_index(a,b,delta=0.0001):
-    a_area = np.sum(a[...,1:])
-    b_area = np.sum(b[...,1:])
-    cross = np.sum(a[...,1:]*b[...,1:])
+    a_area = np.sum(a[...,1:],dtype=np.float32)
+    b_area = np.sum(b[...,1:],dtype=np.float32)
+    cross = np.sum(a[...,1:]*b[...,1:],dtype=np.float32)
     return 2*cross/(a_area+b_area+delta)
 
-def dice_index_norm(a,b,num_class,delta=0.0001):
-    a = tf.argmax(a,axis=-1)
-    a = tf.one_hot(a, num_class, 1, 0)
-    a = tf.cast(a,tf.float32)
+def tf_dice(a,b,smooth=0.00001):
     a_area = tf.reduce_sum(a[...,1:])
     b_area = tf.reduce_sum(b[...,1:])
+    a_area = tf.cast(a_area, tf.float32)
+    b_area = tf.cast(b_area, tf.float32)
+    cross_area = tf.reduce_sum(a[...,1:]*b[...,1:])
+    cross_area = tf.cast(cross_area, tf.float32)
+    return 2.*cross_area/(a_area+b_area+smooth)
+
+def tf_dice_index_norm(a,b,num_class,delta=0.0001):
+    # 输入为softmax则可以帮助one_hot编码之后再比较
+    a = tf.argmax(a,axis=-1)
+    a = tf.one_hot(a, num_class, 1, 0)
+    b = tf.argmax(b,axis=-1)
+    b = tf.one_hot(b, num_class, 1, 0)
+    a_area = tf.reduce_sum(a[...,1:])
+    b_area = tf.reduce_sum(b[...,1:])
+    a_area = tf.cast(a_area, tf.float32)
+    b_area = tf.cast(b_area, tf.float32)
     cross = tf.reduce_sum(a[...,1:]*b[...,1:])
-    return 2*cross/(a_area+b_area+delta)
+    b_area = tf.cast(cross, tf.float32)
+    return 2.*cross/(a_area+b_area+delta)

@@ -11,7 +11,7 @@ from process import test_batch,after_process,root_path, \
                     task_list,recover
 from model import unet,get_input_output_ckpt
 from util import dice,load_graph,get_newest,restore_from_pb,\
-                 one_hot,readNiiAll,saveAsNiiGz,readImage
+                 one_hot,readNiiAll,saveAsNiiGz,readImage,dice_index_norm,dice
 
 test_path = os.path.join(root_path,"test",task_list[2])
 test_list = os.listdir(test_path)

@@ -4,7 +4,7 @@ import preprocess
 import tensorflow as tf
 
 from model import get_input_output_ckpt,unet
-from util import one_hot,dice,iflarger,ifsmaller,frozen_graph,load_graph,\
+from util import one_hot,tf_dice,iflarger,ifsmaller,frozen_graph,load_graph,\
                  get_newest,restore_from_pb
 from process import read_train_data, train_batch, root_path, task_list
 from sklearn.model_selection import train_test_split
@@ -68,7 +68,7 @@ else:
             loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y,logits=y_hat),name="loss")
             optimizer = tf.train.AdamOptimizer(learning_rate=lr).minimize(loss)
             
-            dice_index = dice(y_softmax,y)
+            dice_index = tf_dice(y_softmax,y)
             dice_index_indentity = tf.identity(dice_index,name="dice")
     else:
         if(len([x for x in os.listdir("frozen_model") if(os.path.splitext(x) == ".pb")])):
