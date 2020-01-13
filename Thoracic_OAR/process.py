@@ -81,7 +81,7 @@ def recover(patient_mask_predict,shape):
     temp[np.ix_(range(0,length),range(117,417),range(99,399))] = out
     # 后处理之后
     temp = one_hot(temp, 7)
-    temp = np.array([after_process(x) for x in temp])
+    # temp = np.array([after_process(x) for x in temp])
     return temp
 
 def dilate(src, kernel_size=(3,3)):

@@ -19,9 +19,10 @@ test_list = os.listdir(test_path)
 # hyper parameters
 input_shape = (256,256)
 num_class = 7
-batch_size = 1
+batch_size = 4
 pattern = "pb"
 ifout = True
+ifprocess = True
 
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
@@ -62,7 +63,8 @@ if(ifout):
     if(not os.path.exists(test_result_root_path)):
         os.mkdir(test_result_root_path)
     # 不论是pb模式还是ckpt模式其实都是用的最新的那一套权重，然而pb和ckpt是一样的，就姑且用这个命名了
-    test_result_root_task_path = os.path.join(test_result_root_path,os.path.split(get_newest("frozen_model"))[1])
+    addition_message = '_process' if ifprocess else '_raw'
+    test_result_root_task_path = os.path.join(test_result_root_path,os.path.split(get_newest("frozen_model"))[1]+addition_message)
     if(not os.path.exists(test_result_root_task_path)):
         os.mkdir(test_result_root_task_path)
     out_txt = open("{}/result.txt".format(test_result_root_task_path),'w')
@@ -141,14 +143,3 @@ with graph.as_default():
                 for one_slice in result:
                     patient_mask_predict.append(one_slice)
             print(number)
-
-if(ifout):
-    for one_patient in test_list:
-        real = readImage(os.path.join(test_path,one_patient,'label.nii'))    
-        temp = readImage(os.path.join(test_result_root_task_path,one_patient,'test_label.nii'))
-        real = one_hot(one_patient_mask,7)
-        temp = one_hot(temp,7)
-        dic_norm = np_dice_index(temp,real)
-        print("patient{}:{}\n".format(one_patient,dic_norm))
-        out_txt.write("patient{}:{}\n".format(one_patient,dic_norm))
-    out_txt.close()
