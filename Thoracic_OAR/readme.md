@@ -17,9 +17,9 @@ cstro比赛肺部OAR以及GTV赛道的参赛模型，其实就是朴素Unet然�
 测试结果：test_result文件夹下
 
 ## 后处理
-腐蚀：去除微小的多余轮廓
-根据轮廓大小判断，左右肺弄混的情况
-膨胀：填充空隙
+腐蚀：去除微小的多余轮廓  
+根据轮廓大小判断，左右肺弄混的情况  
+膨胀：填充空隙  
 后处理的一些结果展示:  
 ![png1](https://raw.githubusercontent.com/sennnnn/Unet-cstro/master/Thoracic_OAR/material/patient_1_slice_52.png)  
 ![png2](https://raw.githubusercontent.com/sennnnn/Unet-cstro/master/Thoracic_OAR/material/patient_1_slice_62.png)

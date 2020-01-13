@@ -19,6 +19,9 @@ ckpt
 .vscode
 */.vscode
 **/.vscode
+model
+*/model
+**/model
 # try
 # */try
 # **/try
