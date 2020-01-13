@@ -73,7 +73,7 @@ def read_train_data(train_path,train_list,input_shape):
             mask_list.append(one_mask_slice)
     return np.array(data_list),np.array(mask_list)
 
-def recover(patient_mask_predict,shape):
+def recover(patient_mask_predict,shape,ifprocess):
     # 还原
     length = len(patient_mask_predict)
     out = np.array([cv2.resize(x.astype(np.uint8), (300,300)) for x in patient_mask_predict],dtype=np.uint8)
@@ -81,7 +81,8 @@ def recover(patient_mask_predict,shape):
     temp[np.ix_(range(0,length),range(117,417),range(99,399))] = out
     # 后处理之后
     temp = one_hot(temp, 7)
-    # temp = np.array([after_process(x) for x in temp])
+    if(ifprocess):
+        temp = np.array([after_process(x) for x in temp])
     return temp
 
 def dilate(src, kernel_size=(3,3)):

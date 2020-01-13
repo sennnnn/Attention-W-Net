@@ -98,7 +98,7 @@ with graph.as_default():
                     patient_mask_predict.append(result[j])
             del batch_object
             gc.collect()
-            temp = recover(patient_mask_predict,one_patient_data.shape)
+            temp = recover(patient_mask_predict,one_patient_data.shape,ifprocess)
             real = one_hot(one_patient_mask,7)
             dic_norm = np_dice_index(temp,real)
             print("patient{}:{}".format(one_patient,dic_norm))
