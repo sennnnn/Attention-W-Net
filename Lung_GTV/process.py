@@ -60,10 +60,11 @@ def read_train_data(train_path,train_list,input_shape):
     """
     data_list = []
     mask_list = []
-    for patient in train_list:
-        data = readImage(os.path.join(train_path,patient,'data.nii'))
-        mask = readImage(os.path.join(train_path,patient,'label.nii'))
-        for i,j in zip(data,mask):
+    for one_patient in train_list:
+        os.path.join(one_patient,patient,'data.nii')
+        data = readImage(os.path.join(one_patient,patient,'data.nii'))
+        mask = readImage(os.path.join(one_patient,patient,'label.nii'))
+        for i,j:
             data_list.append(i)
             mask_list.append(j)
     return np.array(data_list),np.array(mask_list)
@@ -241,59 +242,7 @@ class test_batch(object):
 
 if __name__ == "__main__":
     # train batch get example
-    train_path = os.path.join(root_path,"train",task_list[2])
-    train_list = os.listdir(train_path)
-    start = time.time()
-    data,mask = read_train_data(train_path,train_list)
-    end = time.time()
-    data_train,data_valid,mask_train,mask_valid = train_test_split(data,mask,test_size=0.1,shuffle=True)
-    print("spend time:%.2fs\ndata_shape:{} mask_shape:{}".format(data.shape,mask.shape)%(end-start))
-    train_batch_object,valid_batch_object = train_batch(data_train,mask_train,True,15,7),train_batch(data_valid,mask_valid,True,15,7)
-    # begin show
-    while(1):
-        batch_train_x,batch_train_y = train_batch_object.get_batch(1)
-        batch_valid_x,batch_valid_y = valid_batch_object.get_batch(1)
-        print(batch_train_x.shape," ",batch_train_y.shape)
-        print(batch_valid_x.shape," ",batch_valid_y.shape)
-        for i,j,l,m in zip(batch_train_x,batch_train_y,batch_valid_x,batch_valid_y):
-            i = i[...,0]
-            j = np.argmax(j,axis=-1)
-            l = l[...,0]
-            m = np.argmax(m,axis=-1)
-            plt.subplot(221)
-            plt.imshow(i,cmap='gray')
-            plt.title("{}x{}".format(*tuple(i.shape[0:2])))
-            plt.axis('off')
-            plt.subplot(222)
-            plt.imshow(j,cmap='gray')
-            plt.title("{}x{}".format(*tuple(j.shape[0:2])))
-            plt.axis('off')
-            plt.subplot(223)
-            plt.imshow(l,cmap='gray')
-            plt.title("{}x{}".format(*tuple(l.shape[0:2])))
-            plt.axis('off')
-            plt.subplot(224)
-            plt.imshow(m,cmap='gray')
-            plt.title("{}x{}".format(*tuple(m.shape[0:2])))
-            plt.axis('off')
-            plt.show()
-    # test_path = os.path.join(root_path,"test",task_list[2])
-    # test_list = os.listdir(test_path)
-    # start = time.time()
-    # data,mask = read_test_data(test_path,test_list)
-    # for one_patient_data,one_patient_mask in zip(data,mask):
-    #     batch_object = test_batch(one_patient_data,one_patient_mask,7)
-    #     while(1):
-    #         one_batch,flag = batch_object.get_batch(1)
-    #         if(not flag):
-    #             break
-    #         one_batch_data,one_batch_mask = one_batch[0],one_batch[1]
-    #         print(one_batch_data,one_batch_mask)
-    #         plt.subplot(121)
-    #         plt.imshow(one_batch_data[2,:,:,0],cmap='gray')
-    #         plt.axis('off')
-    #         plt.subplot(122)
-    #         plt.imshow(np.argmax(one_batch_mask[2],axis=-1),cmap='gray')
-    #         plt.axis('off')
-
+    """
+    6
+    """
             

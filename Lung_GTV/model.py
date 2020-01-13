@@ -101,6 +101,9 @@ def get_input_output_pb(frozen_graph):
         y_result = graph.get_tensor_by_name("segementation_result:0")
     return x,y_result
 
+def restore_part_from_pb(frozen_model_oar):
+    # 只导入部分肺部权重
+
 if __name__ == "__main__":
     # input = tf.placeholder(tf.float32, [None,256,256,1], name='input_x')
     out = get_input_output_ckpt(unet, (256,256), 7)

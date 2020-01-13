@@ -54,13 +54,9 @@ def restore_from_pb(sess,frozen_graph,meta_graph):
     tensors_constant = [frozen_graph.get_tensor_by_name(x+':0') for x in ops_restore]
     tensors_variables = [meta_graph.get_tensor_by_name(x+':0') for x in ops_restore]
     do_list = []
-    # [print(x.name) for x in tensors_constant]
     sess_local = tf.Session(graph=frozen_graph)
     for i in range(len(ops_restore)):
         temp = sess_local.run(tensors_constant[i])
-        # print(i,' ',tensors_constant[i].name,'==>>',tensors_variables[i].name)
-        # print
-        # print(sess.run(tf.assign(tensors_variables[i],temp)))
         do_list.append(tf.assign(tensors_variables[i],temp))
     sess_local.close()
     sess.run(do_list)
