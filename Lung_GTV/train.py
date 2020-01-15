@@ -17,16 +17,16 @@ session = tf.InteractiveSession(config=config)
 # hyper parameters
 batch_size = 4
 max_epoches = 200
-rate = 0.0001
+rate = 0.000001
 input_shape = (256,256)
 num_class = 2           # 背景和GTV
 last = True             # last为False，那么pattern就失去作用了，因为一切都将重新开始
-start_epoch = 11         # epoch 1~epoch 7的损失函数会有log0从而导致梯度爆炸
-pattern = "pb"
+start_epoch = 84         # epoch 1~epoch 7的损失函数会有log0从而导致梯度爆炸
+pattern = "ckpt"
 # 先验结果
 # weight = [0.0007440585488760174,0.999255941451124]
-# weight = [455/(455+4398),4398/(455+4398)]
-weight = [3/8,5/8]
+weight = [455/(455+4398),4398/(455+4398)]
+# weight = [3/8,5/8]
 
 train_path = os.path.join(root_path,"train",task_list[3])
 train_list = os.listdir(train_path)
@@ -66,7 +66,8 @@ else:
             loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y,logits=weight*y_hat),name="loss")
             # 加权损失函数再加上dice的影响让loss与训练更相关
             # loss = tf.reduce_mean(weight_loss(y,y_hat,weight),name='loss')
-            optimizer = tf.train.AdamOptimizer(learning_rate=lr).minimize(loss)
+            # epoch 16开始换优化器了
+            optimizer = tf.train.MomentumOptimizer(learning_rate=lr,momentum=0.99).minimize(loss)
         
             dice_index_indentity = tf.identity(dice_index,name="dice")
     else:
@@ -162,17 +163,16 @@ epoch dataset initial spend time:%.2fs \
             # get one batch data and label
             train_batch_x,train_batch_y = train_batch_object.get_batch(batch_size)
             _ = sess.run(optimizer,feed_dict={x:train_batch_x,y:train_batch_y})
-            if((j+1)%20==0):
+            if((j+1)%5==0):
                 valid_batch_x,valid_batch_y = valid_batch_object.get_batch(batch_size)
                 dic,los,rate = sess.run([dice_index,loss,lr],feed_dict={x:valid_batch_x,y:valid_batch_y})
                 valid_log["loss"][i].append(los)
                 valid_log["dice"][i].append(dic)
-                one_epoch_avg_loss += los/(one_epoch_steps//20)
-                one_epoch_avg_dice += dic/(one_epoch_steps//20)
-                show_string = "epoch:{} steps:{} valid_loss:{} valid_dice:{} learning_rate:{}".format(i+1,j+1,los,dic,rate)
-                print(show_string + '  ' + str(np.max(valid_batch_y)))
+                one_epoch_avg_loss += los/(one_epoch_steps//5)
+                one_epoch_avg_dice += dic/(one_epoch_steps//5)
+                show_string = "epoch:{} steps:{} valid_loss:{} valid_dice:{} learning_rate:{}".format(i+1,j+1,los,dic,rate) + '  ' + str(np.max(valid_batch_y))
+                print(show_string)
                 temp.write(show_string+'\n')
-        
         show_string = "=======================================================\n \
 epoch_end: epoch:{} epoch_avg_loss:{} epoch_avg_dice:{}\n".format(i+1,one_epoch_avg_loss,one_epoch_avg_dice)
 

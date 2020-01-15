@@ -42,7 +42,10 @@ Iqbal S, Ghani M U, Saba T, et al. Brain tumor segmentation in multi‐spectral 
 1. 随机平移
 2. 随机翻转
 3. 随机旋转
-但是argmax的改变依然是有意义的
+但是argmax的改变依然是有意义的。
+记录：
+1~82 epoch 测试结果为48_0.409.pb_raw，观察测试结果发现肿瘤在测试集上分布太少了，一个病人，一百多张CT切片，才尼玛三四张上面的一小块有肿瘤，我寻思这尼玛能预测出来？？？？
+82 epoch之后把通道加权的肿瘤权值调高，然后降低数据增强的强度，30°的旋转变为15°
 
 ### 查错
 
@@ -53,5 +56,3 @@ Iqbal S, Ghani M U, Saba T, et al. Brain tumor segmentation in multi‐spectral 
 虽然，我指定了第三阶段的训练计划，但是第三阶段有可能还是不行，所以下一步：
 1. 使用加入了SE块的减少了下采样次数的自定义Unet-SE
 2. 将分类问题变成异常检测的单分类问题
-
-## cha'cuo
