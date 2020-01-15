@@ -8,7 +8,8 @@ EPSILON = 1E-05
 LEAKY_RELU = 0.1
 
 def DBR(input, filters, strides=1, kernel_size=3):
-    input = layers.conv2d(input, filters, kernel_size, use_bias=True ,strides=strides, padding='same')
+    input = layers.conv2d(input, filters, kernel_size, use_bias=True ,strides=strides, padding='same', \
+                            kernel_regularizer=tf.contrib.layers.l2_regularizer(0.1))
     input = layers.batch_normalization(input,momentum=DECAY_BATCH_NORM,epsilon=EPSILON)
     input = tf.nn.leaky_relu(input,alpha=LEAKY_RELU,name='ac')
     return input
@@ -16,8 +17,8 @@ def DBR(input, filters, strides=1, kernel_size=3):
 def res_block(input, filters):
     # 普通的残差块
     shortcut = input
-    input = DBR(input, filters, 3)
-    input = DBR(input, filters, 3)
+    input = DBR(input, filters)
+    input = DBR(input, filters)
     return input + shortcut
 
 def artous_conv(input, filters, rate):
@@ -35,6 +36,13 @@ def bottle_neck_block(input, filters):
     input = DBR(input, filters, 1)
     return input + shortcut
 
+def channel_attention_block(input):
+    with tf.variable_scope("channel"):
+        norm = tf.random_uniform([input.get_shape().as_list()[-1]])
+        va1 = tf.Variable(norm)
+        input = input*va1
+        return input
+
 def upsampling(input,filters,kernel_size=3,strides=2):
     # 上采样层，用反卷积实现
     input = layers.conv2d_transpose(input,filters,kernel_size,strides,padding='same')
@@ -42,6 +50,8 @@ def upsampling(input,filters,kernel_size=3,strides=2):
     return input
 
 def unet(input,num_class):
+
+## 编码器 ##
     input = DBR(input,64)
     input = DBR(input,64)
     fus1  = input
@@ -61,10 +71,15 @@ def unet(input,num_class):
     input = DBR(input,512)
     fus4  = input
     input = DBR(input,512,2)
+## ##
 
     input = DBR(input,1024)
+    # 加入防止过拟合的dropout层
+    input = channel_attention_block(input)
+    input = tf.nn.dropout(input, 0.1)
     input = DBR(input,1024)
 
+## 解码器 ##
     input = upsampling(input, 1024)
     input = tf.concat([fus4,input],axis=-1)
     input = DBR(input,512)
@@ -84,7 +99,44 @@ def unet(input,num_class):
     input = tf.concat([fus1,input],axis=-1)
     input = DBR(input,64)
     input = DBR(input,64)
+    # with tf.variable_scope("output_layer"):
     input = DBR(input,num_class,kernel_size=1)
+    return input
+
+def unet_SE(input,num_class):
+    # 由于unet下采样太多次了，所以我感觉对于小器官也许不需要那么多次的下采样，可以引入注意力机制
+## 编码器
+    input = channel_attention_block(input)
+    input = DBR(input,64)
+    input = res_block(input,64)
+    fus1 = input
+    input = DBR(input,64,2)
+
+    input = DBR(input,128)
+    input = res_block(input,128)
+    fus2 = input
+    input = DBR(input,128,2)
+##
+
+    input = DBR(input,256)
+    input = res_block(input,256)
+    input = channel_attention_block(input)
+    input = tf.nn.dropout(input,0.2)
+    input = res_block(input,256)
+
+## 解码器 ##
+    input = upsampling(input,256)
+    input = tf.concat([fus2,input],axis=-1)
+    input = DBR(input,128)
+    input = res_block(input,128)
+
+    input = upsampling(input,128)
+    input = tf.concat([fus1,input],axis=-1)
+    input = DBR(input,64)
+    input = res_block(input,64)
+    input = DBR(input,num_class,kernel_size=1)
+    input = channel_attention_block(input)
+##
     return input
 
 def get_input_output_ckpt(unet,num_class):
@@ -101,8 +153,6 @@ def get_input_output_pb(frozen_graph):
         y_result = graph.get_tensor_by_name("segementation_result:0")
     return x,y_result
 
-def restore_part_from_pb(frozen_model_oar):
-    # 只导入部分肺部权重
 
 if __name__ == "__main__":
     # input = tf.placeholder(tf.float32, [None,256,256,1], name='input_x')

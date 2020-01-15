@@ -47,6 +47,24 @@ def load_graph(frozen_graph_filename):
     print("load graph {} ...".format(frozen_graph_filename))
     return graph
 
+def restore_part_from_pb(sess,frozen_graph_oar,meta_graph):
+    # 只导入部分肺部权重，将最后一层卷积层扔掉
+    ops = frozen_graph_oar.get_operations()
+    meta_ops = meta_graph.get_operations()
+    ops_selected = [x for x in ops if('/read' in x.name)]
+    ops_selected = [x.name.replace('/read','') for x in ops_selected if('conv2d_22' not in x.name and \
+                    'batch_normalization_26' not in x.name)]
+    tensors_constant = [frozen_graph_oar.get_tensor_by_name(x+':0') for x in ops_selected]
+    tensors_variables = [meta_graph.get_tensor_by_name(x+':0') for x in ops_selected]
+    do_list = []
+    sess_local = tf.Session(graph=frozen_graph_oar)
+    for i in range(len(ops_selected)):
+        temp = sess_local.run(tensors_constant[i])
+        do_list.append(tf.assign(tensors_variables[i],temp))
+    sess_local.close()
+    sess.run(do_list)
+    return sess
+
 def restore_from_pb(sess,frozen_graph,meta_graph):
     # frozen_graph 与 meta_graph 应该是相互匹配的
     ops = frozen_graph.get_operations()
@@ -61,6 +79,7 @@ def restore_from_pb(sess,frozen_graph,meta_graph):
     sess_local.close()
     sess.run(do_list)
     return sess
+
 
 def frozen_graph(sess, output_graph):
     output_graph_def = tf.graph_util.convert_variables_to_constants(sess, # 因为计算图上只有ops没有变量，所以要通过会话，来获得变量有哪些
@@ -139,3 +158,12 @@ def tf_dice_index_norm(a,b,num_class,delta=0.0001):
     cross = tf.reduce_sum(a[...,1:]*b[...,1:])
     b_area = tf.cast(cross, tf.float32)
     return 2.*cross/(a_area+b_area+delta)
+
+def weight_loss(label,predict,weight):
+    one = weight[0]*tf.nn.softmax_cross_entropy_with_logits_v2(labels=label[...,0],logits=predict[...,0])
+    for i in range(1,len(weight)):
+        temp = weight[i]*tf.nn.softmax_cross_entropy_with_logits_v2(labels=label[...,i],logits=predict[...,i])
+        one = tf.concat([one,temp],axis=-1)
+
+    cross_entropy = tf.reduce_sum(one,axis=-1)
+    return cross_entropy

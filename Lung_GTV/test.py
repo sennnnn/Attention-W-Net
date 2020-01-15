@@ -8,20 +8,21 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 from process import test_batch,after_process,root_path, \
-                    task_list,recover
+                    task_list,recover,recover_softmax
 from model import unet,get_input_output_ckpt
 from util import tf_dice,tf_dice_index_norm,load_graph,get_newest,restore_from_pb,\
                  one_hot,readNiiAll,saveAsNiiGz,readImage,np_dice_index
 
-test_path = os.path.join(root_path,"test",task_list[2])
+test_path = os.path.join(root_path,"test",task_list[3])
 test_list = os.listdir(test_path)
 
 # hyper parameters
 input_shape = (256,256)
-num_class = 7
+num_class = 2
 batch_size = 1
 pattern = "pb"
 ifout = True
+ifprocess = False
 
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
@@ -62,7 +63,9 @@ if(ifout):
     if(not os.path.exists(test_result_root_path)):
         os.mkdir(test_result_root_path)
     # 不论是pb模式还是ckpt模式其实都是用的最新的那一套权重，然而pb和ckpt是一样的，就姑且用这个命名了
-    test_result_root_task_path = os.path.join(test_result_root_path,os.path.split(get_newest("frozen_model"))[1])
+    addition_message = '_process' if ifprocess else '_raw'
+    # os.path.split(get_newest("frozen_model"))[1]
+    test_result_root_task_path = os.path.join(test_result_root_path,os.path.split(get_newest("frozen_model"))[1]+addition_message)
     if(not os.path.exists(test_result_root_task_path)):
         os.mkdir(test_result_root_task_path)
     out_txt = open("{}/result.txt".format(test_result_root_task_path),'w')
@@ -71,6 +74,7 @@ with graph.as_default():
     sess = tf.Session(config=config)
     init = tf.global_variables_initializer()
     sess.run(init)
+    print("sndaonsof)")
     if(pattern == "ckpt"):
         # 没有ckpt模型restore会失败，程序会退出，而之后也不会执行
         saver.restore(sess, "ckpt/latest_model")
@@ -86,22 +90,28 @@ with graph.as_default():
             length = one_patient_data.shape[0]
             batch_object = test_batch(one_patient_data,one_patient_mask,num_class,input_shape)
             patient_mask_predict = []
+            patient_soft_mask_predict = []
             while(1):
                 batch,flag = batch_object.get_batch(batch_size)
                 if(not flag):
                     break
                 batch_test_x = batch[0]
-                result = sess.run(y_result, feed_dict={x:batch_test_x})
+                result,softmax = sess.run([y_result,y_softmax], feed_dict={x:batch_test_x})
                 for j in range(batch_test_x.shape[0]):
                     patient_mask_predict.append(result[j])
+                    patient_soft_mask_predict.append(softmax[j])
             del batch_object
             gc.collect()
-            temp = recover(patient_mask_predict,one_patient_data.shape)
-            real = one_hot(one_patient_mask,7)
+            temp = recover(patient_mask_predict,one_patient_data.shape,ifprocess,num_class)
+            real = one_hot(one_patient_mask,num_class)
+            temp_sof = recover_softmax(patient_soft_mask_predict,one_patient_data.shape,num_class)
+            print(temp_sof)
+            dic = np_dice_index(temp_sof,real)
             dic_norm = np_dice_index(temp,real)
-            print("patient{}:{}".format(one_patient,dic_norm))
-            out_txt.write("patient{}:{}\n".format(one_patient,dic_norm))
+            print("patient{}:{} patient{}_softmax:{}".format(one_patient,dic_norm,one_patient,dic))
+            out_txt.write("patient{}:{} patient{}_softmax:{}\n".format(one_patient,dic_norm,one_patient,dic))
             temp = np.argmax(temp,axis=-1)
+            np.save(os.path.join(test_root_task_single_patient_path ,"softmax.npy"),temp_sof)
             saveAsNiiGz(temp, os.path.join(test_root_task_single_patient_path ,"test_label.nii.gz"), Spacing, Origin)
             del real
             del temp
@@ -141,14 +151,3 @@ with graph.as_default():
                 for one_slice in result:
                     patient_mask_predict.append(one_slice)
             print(number)
-
-if(ifout):
-    for one_patient in test_list:
-        real = readImage(os.path.join(test_path,one_patient,'label.nii'))    
-        temp = readImage(os.path.join(test_result_root_task_path,one_patient,'test_label.nii'))
-        real = one_hot(one_patient_mask,7)
-        temp = one_hot(temp,7)
-        dic_norm = np_dice_index(temp,real)
-        print("patient{}:{}\n".format(one_patient,dic_norm))
-        out_txt.write("patient{}:{}\n".format(one_patient,dic_norm))
-    out_txt.close()

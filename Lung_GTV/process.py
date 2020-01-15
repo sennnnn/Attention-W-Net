@@ -61,23 +61,56 @@ def read_train_data(train_path,train_list,input_shape):
     data_list = []
     mask_list = []
     for one_patient in train_list:
-        os.path.join(one_patient,patient,'data.nii')
-        data = readImage(os.path.join(one_patient,patient,'data.nii'))
-        mask = readImage(os.path.join(one_patient,patient,'label.nii'))
-        for i,j:
+        data = readImage(os.path.join(train_path,one_patient,'data.nii'))
+        mask = readImage(os.path.join(train_path,one_patient,'label.nii'))
+        for i,j in zip(data,mask):
+            i = i[np.ix_(range(117,417),range(99,399))]
+            j = j[np.ix_(range(117,417),range(99,399))]
+            i = cv2.resize(i.astype(np.float32),input_shape)
+            j = cv2.resize(j,input_shape)
             data_list.append(i)
             mask_list.append(j)
     return np.array(data_list),np.array(mask_list)
 
-def recover(patient_mask_predict,shape):
+def epoch_read(data,mask):
+    # 每个epoch重新读取一次数据集，将正负样本在每个epoch下保持一定比例
+    # 为了让正负样本均衡，而又不让负样本的多样性太单一，目前训练集的比例为positive:negetive ≈ 400:3900
+    # 首先提取出有效训练数据，epoch28之前每个epoch正样本是随机取所有正样本的3/4，而负样本是取之前所有负样本1/5
+    # epoch28之后调整正负样本比例，负样本应该更少，因为测试结果发现预测的部分太少了。
+    # epoch28之后正样本为随机在所有样本里面取3/4，负样本随机在所有样本里面取3/20
+    data_list = []
+    mask_list = []
+    # 正样本中提取一部分，负样本中提取一部分
+    for i,j in zip(data,mask):
+        if(np.max(j) == 0):
+            flag = random.randint(1,20)
+            if(flag < 4):
+                data_list.append(i)
+                mask_list.append(j)
+        else:
+            flag = random.randint(1,4)
+            if(flag < 3):
+                data_list.append(i)
+                mask_list.append(j)
+    return np.array(data_list),np.array(mask_list)
+
+def recover_softmax(patient_softmax_mask_predict,shape,num_class):
+    length = len(patient_softmax_mask_predict)
+    out = np.array([cv2.resize(x.astype(np.float32), (300,300)) for x in patient_softmax_mask_predict],dtype=np.float32)
+    temp = np.zeros(shape=(*shape,num_class), dtype=np.float32)
+    temp[np.ix_(range(0,length),range(117,417),range(99,399),range(0,num_class))] = out
+    return temp
+
+def recover(patient_mask_predict,shape,ifprocess,num_class):
     # 还原
     length = len(patient_mask_predict)
     out = np.array([cv2.resize(x.astype(np.uint8), (300,300)) for x in patient_mask_predict],dtype=np.uint8)
     temp = np.zeros(shape=shape, dtype=np.uint8)
     temp[np.ix_(range(0,length),range(117,417),range(99,399))] = out
     # 后处理之后
-    temp = one_hot(temp, 7)
-    temp = np.array([after_process(x) for x in temp])
+    temp = one_hot(temp, num_class)
+    if(ifprocess):
+        temp = np.array([after_process(x) for x in temp])
     return temp
 
 def dilate(src, kernel_size=(3,3)):
@@ -187,10 +220,8 @@ class train_batch(object):
             if(self.flip == True):
                 random_state = random.randint(-9,2)
             # 裁剪，裁剪是最优先的，是数据简化的最有效方式
-            one_data_slice = self.data[i][np.ix_(range(117,417),range(99,399))]
-            one_mask_slice = self.mask[i],[np.ix_(range(117,417),range(99,399))]
-            one_data_slice = cv2.resize(one_data_slice.astype(np.float32),input_shape)
-            one_mask_slice = cv2.resize(one_mask_slice,input_shape)
+            one_data_slice = self.data[i]
+            one_mask_slice = self.mask[i]
             temp_slice_data = _preprocess_oneslice(one_data_slice,self.flip,self.angle,random_state,"data")
             temp_slice_mask = _preprocess_oneslice(one_mask_slice,self.flip,self.angle,random_state,"mask")
             batch_data.append(temp_slice_data)

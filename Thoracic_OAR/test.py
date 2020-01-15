@@ -19,7 +19,7 @@ test_list = os.listdir(test_path)
 # hyper parameters
 input_shape = (256,256)
 num_class = 7
-batch_size = 4
+batch_size = 1
 pattern = "pb"
 ifout = True
 ifprocess = True
@@ -88,6 +88,7 @@ with graph.as_default():
             length = one_patient_data.shape[0]
             batch_object = test_batch(one_patient_data,one_patient_mask,num_class,input_shape)
             patient_mask_predict = []
+            patient_mask_softmax_predict = []
             while(1):
                 batch,flag = batch_object.get_batch(batch_size)
                 if(not flag):
@@ -98,11 +99,11 @@ with graph.as_default():
                     patient_mask_predict.append(result[j])
             del batch_object
             gc.collect()
-            temp = recover(patient_mask_predict,one_patient_data.shape,ifprocess)
-            real = one_hot(one_patient_mask,7)
+            temp = recover(patient_mask_predict,one_patient_data.shape,ifprocess,num_class)
+            real = one_hot(one_patient_mask,num_class)
             dic_norm = np_dice_index(temp,real)
             print("patient{}:{}".format(one_patient,dic_norm))
-            out_txt.write("patient{}:{}\n".format(one_patient,dic_norm))
+            out_txt.write("patient{}:{} patient{}_softmax:{}\n".format(one_patient,dic_norm))
             temp = np.argmax(temp,axis=-1)
             saveAsNiiGz(temp, os.path.join(test_root_task_single_patient_path ,"test_label.nii.gz"), Spacing, Origin)
             del real

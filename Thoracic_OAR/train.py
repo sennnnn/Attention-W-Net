@@ -33,7 +33,7 @@ data_train,data_valid,mask_train,mask_valid = train_test_split(data,mask,test_si
 print("spend time:%.2fs\ndata_train_shape:{} mask_train_shape:{}\ndata_valid_shape:{}\
  mask_valid_shape:{}".format(data_train.shape,mask_train.shape,data_valid.shape,mask_valid.shape)%(end-start))
 
-one_epoch_steps = data.shape[0]//batch_size
+one_epoch_steps = data_train.shape[0]//batch_size
 
 # 1~24 epoch 使用了随机水平竖直翻转、15°旋转，此时测试结果会有左右肺互相混淆的情况，这是因为左右肺的灰度太过于相似，并且小器官分割效果比较差
 # 25 epoch 开始使用10°旋转，并禁用翻转
@@ -53,7 +53,7 @@ if(pattern != "ckpt" and pattern != "pb"):
 else:
     if(pattern == "ckpt" or last == False):
         with graph.as_default():
-            x,y_hat = get_input_output_ckpt(unet,input_shape,num_class)
+            x,y_hat = get_input_output_ckpt(unet,num_class)
             y = tf.placeholder(tf.float32,[None, None, None, num_class],name="input_y")
             lr_init = tf.placeholder(tf.float32,name='input_lr')
 
