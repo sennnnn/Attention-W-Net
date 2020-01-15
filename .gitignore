@@ -5,6 +5,9 @@
 try.py
 */try.py
 **/try.py
+*.npy
+*/*.npy
+**/*.npy
 
 # folder
 __pycache__

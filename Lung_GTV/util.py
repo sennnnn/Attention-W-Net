@@ -160,10 +160,6 @@ def tf_dice_index_norm(a,b,num_class,delta=0.0001):
     return 2.*cross/(a_area+b_area+delta)
 
 def weight_loss(label,predict,weight):
-    one = weight[0]*tf.nn.softmax_cross_entropy_with_logits_v2(labels=label[...,0],logits=predict[...,0])
-    for i in range(1,len(weight)):
-        temp = weight[i]*tf.nn.softmax_cross_entropy_with_logits_v2(labels=label[...,i],logits=predict[...,i])
-        one = tf.concat([one,temp],axis=-1)
-
-    cross_entropy = tf.reduce_sum(one,axis=-1)
-    return cross_entropy
+    predict = tf.nn.softmax(predict)
+    cross = -tf.reduce_sum(weight*label*tf.log(predict+3e-9),axis=-1)
+    return cross

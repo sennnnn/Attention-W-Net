@@ -75,7 +75,6 @@ def unet(input,num_class):
 
     input = DBR(input,1024)
     # 加入防止过拟合的dropout层
-    input = channel_attention_block(input)
     input = tf.nn.dropout(input, 0.1)
     input = DBR(input,1024)
 

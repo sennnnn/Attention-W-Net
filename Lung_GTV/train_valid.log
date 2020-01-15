@@ -1,0 +1,173 @@
+epoch dataset initial spend time:0.71s  epoch steps:198
+  data_train_shape:(793, 256, 256) mask_train_shape:(793, 256, 256)
+  data_valid_shape:(199, 256, 256) mask_valid_shape:(199, 256, 256)
+epoch:1 steps:20 valid_loss:0.02811024710536003 valid_dice:0.11131862550973892 learning_rate:9.999999747378752e-05
+epoch:1 steps:40 valid_loss:0.017925867810845375 valid_dice:0.006681470200419426 learning_rate:9.999999747378752e-05
+epoch:1 steps:60 valid_loss:0.02422298863530159 valid_dice:0.04704631492495537 learning_rate:9.999999747378752e-05
+epoch:1 steps:80 valid_loss:0.0055048055946826935 valid_dice:0.06416169553995132 learning_rate:9.999999747378752e-05
+epoch:1 steps:100 valid_loss:0.016495004296302795 valid_dice:0.062286265194416046 learning_rate:9.999999747378752e-05
+epoch:1 steps:120 valid_loss:0.012802427634596825 valid_dice:0.178639218211174 learning_rate:9.999999747378752e-05
+epoch:1 steps:140 valid_loss:0.011910099536180496 valid_dice:0.20367664098739624 learning_rate:9.999999747378752e-05
+epoch:1 steps:160 valid_loss:0.011436107568442822 valid_dice:0.1178247407078743 learning_rate:9.999999747378752e-05
+epoch:1 steps:180 valid_loss:0.017417635768651962 valid_dice:0.16212232410907745 learning_rate:9.999999747378752e-05
+=======================================================
+ epoch_end: epoch:1 epoch_avg_loss:0.016202798216707174 epoch_avg_dice:0.10597303282055591
+ckpt_model_save because of 0<=0.10597303282055591
+frozen_model_save frozen_model/1_0.106.pb
+563 ops written to frozen_model/1_0.106.pb.
+=======================================================
+epoch dataset initial spend time:18.04s  epoch steps:201
+  data_train_shape:(804, 256, 256) mask_train_shape:(804, 256, 256)
+  data_valid_shape:(201, 256, 256) mask_valid_shape:(201, 256, 256)
+epoch:2 steps:20 valid_loss:0.003665515687316656 valid_dice:0.007308724336326122 learning_rate:9.999999747378752e-05
+epoch:2 steps:40 valid_loss:0.015792369842529297 valid_dice:0.1139395534992218 learning_rate:9.999999747378752e-05
+epoch:2 steps:60 valid_loss:0.009728493168950081 valid_dice:0.0010673656361177564 learning_rate:9.999999747378752e-05
+epoch:2 steps:80 valid_loss:0.015365658327937126 valid_dice:0.18306009471416473 learning_rate:9.999999747378752e-05
+epoch:2 steps:100 valid_loss:0.002276964019984007 valid_dice:0.0022334218956530094 learning_rate:9.999999747378752e-05
+epoch:2 steps:120 valid_loss:0.021642129868268967 valid_dice:0.0011506048031151295 learning_rate:9.999999747378752e-05
+epoch:2 steps:140 valid_loss:0.004015318118035793 valid_dice:0.232827827334404 learning_rate:9.999999747378752e-05
+epoch:2 steps:160 valid_loss:0.005361268762499094 valid_dice:0.13963209092617035 learning_rate:9.999999747378752e-05
+epoch:2 steps:180 valid_loss:0.0037575000897049904 valid_dice:0.17913153767585754 learning_rate:9.999999747378752e-05
+epoch:2 steps:200 valid_loss:0.00023955284268595278 valid_dice:0.0 learning_rate:9.999999747378752e-05
+=======================================================
+ epoch_end: epoch:2 epoch_avg_loss:0.008184477072791197 epoch_avg_dice:0.08603512208210304
+=======================================================
+epoch dataset initial spend time:15.74s  epoch steps:205
+  data_train_shape:(822, 256, 256) mask_train_shape:(822, 256, 256)
+  data_valid_shape:(206, 256, 256) mask_valid_shape:(206, 256, 256)
+epoch:3 steps:20 valid_loss:0.006111619062721729 valid_dice:0.17567238211631775 learning_rate:9.999999747378752e-05
+epoch:3 steps:40 valid_loss:0.005057712085545063 valid_dice:0.3095884919166565 learning_rate:9.999999747378752e-05
+epoch:3 steps:60 valid_loss:0.0018010681960731745 valid_dice:0.0 learning_rate:9.999999747378752e-05
+epoch:3 steps:80 valid_loss:0.007406376302242279 valid_dice:0.11382938176393509 learning_rate:9.999999747378752e-05
+epoch:3 steps:100 valid_loss:0.004483890254050493 valid_dice:0.0879623219370842 learning_rate:9.999999747378752e-05
+epoch:3 steps:120 valid_loss:0.006493919994682074 valid_dice:0.15705867111682892 learning_rate:9.999999747378752e-05
+epoch:3 steps:140 valid_loss:0.0029601105488836765 valid_dice:0.0 learning_rate:9.999999747378752e-05
+epoch:3 steps:160 valid_loss:0.00686914287507534 valid_dice:0.18688884377479553 learning_rate:9.999999747378752e-05
+epoch:3 steps:180 valid_loss:0.01181311346590519 valid_dice:0.37502968311309814 learning_rate:9.999999747378752e-05
+epoch:3 steps:200 valid_loss:0.0003762707638088614 valid_dice:0.0 learning_rate:9.999999747378752e-05
+=======================================================
+ epoch_end: epoch:3 epoch_avg_loss:0.005337322354898788 epoch_avg_dice:0.1406029775738716
+ckpt_model_save because of 0.10597303282055591<=0.1406029775738716
+frozen_model_save frozen_model/3_0.141.pb
+563 ops written to frozen_model/3_0.141.pb.
+=======================================================
+epoch dataset initial spend time:13.93s  epoch steps:210
+  data_train_shape:(840, 256, 256) mask_train_shape:(840, 256, 256)
+  data_valid_shape:(211, 256, 256) mask_valid_shape:(211, 256, 256)
+epoch:4 steps:20 valid_loss:0.0023136897943913937 valid_dice:0.08496633172035217 learning_rate:9.999999747378752e-05
+epoch:4 steps:40 valid_loss:0.013660384342074394 valid_dice:0.26860129833221436 learning_rate:9.999999747378752e-05
+epoch:4 steps:60 valid_loss:0.01066555269062519 valid_dice:0.21070532500743866 learning_rate:9.999999747378752e-05
+epoch:4 steps:80 valid_loss:0.012804055586457253 valid_dice:0.125950425863266 learning_rate:9.999999747378752e-05
+epoch:4 steps:100 valid_loss:0.004987512715160847 valid_dice:0.3677016794681549 learning_rate:9.999999747378752e-05
+epoch:4 steps:120 valid_loss:0.012416034936904907 valid_dice:0.2345828115940094 learning_rate:9.999999747378752e-05
+epoch:4 steps:140 valid_loss:0.006971233058720827 valid_dice:0.2751300036907196 learning_rate:9.999999747378752e-05
+epoch:4 steps:160 valid_loss:0.0026489770971238613 valid_dice:0.30819591879844666 learning_rate:9.999999747378752e-05
+epoch:4 steps:180 valid_loss:0.013241412118077278 valid_dice:0.1998160034418106 learning_rate:9.999999747378752e-05
+epoch:4 steps:200 valid_loss:0.00893545150756836 valid_dice:0.06944076716899872 learning_rate:9.999999747378752e-05
+=======================================================
+ epoch_end: epoch:4 epoch_avg_loss:0.008864430384710431 epoch_avg_dice:0.2145090565085411
+learning rate decay from 9.999999747378752e-05 to 4.999999873689376e-05
+ckpt_model_save because of 0.1406029775738716<=0.2145090565085411
+frozen_model_save frozen_model/4_0.215.pb
+563 ops written to frozen_model/4_0.215.pb.
+=======================================================
+epoch dataset initial spend time:11.88s  epoch steps:185
+  data_train_shape:(740, 256, 256) mask_train_shape:(740, 256, 256)
+  data_valid_shape:(185, 256, 256) mask_valid_shape:(185, 256, 256)
+epoch:5 steps:20 valid_loss:0.004419369623064995 valid_dice:0.04776504635810852 learning_rate:4.999999873689376e-05
+epoch:5 steps:40 valid_loss:0.006642819382250309 valid_dice:0.43048882484436035 learning_rate:4.999999873689376e-05
+epoch:5 steps:60 valid_loss:0.007481597363948822 valid_dice:0.09239838272333145 learning_rate:4.999999873689376e-05
+epoch:5 steps:80 valid_loss:0.01002040971070528 valid_dice:0.2252744883298874 learning_rate:4.999999873689376e-05
+epoch:5 steps:100 valid_loss:0.003896657843142748 valid_dice:0.1144697368144989 learning_rate:4.999999873689376e-05
+epoch:5 steps:120 valid_loss:0.013501981273293495 valid_dice:0.25958365201950073 learning_rate:4.999999873689376e-05
+epoch:5 steps:140 valid_loss:0.0038921190425753593 valid_dice:0.23167090117931366 learning_rate:4.999999873689376e-05
+epoch:5 steps:160 valid_loss:0.01395760104060173 valid_dice:0.4190554618835449 learning_rate:4.999999873689376e-05
+epoch:5 steps:180 valid_loss:0.014515124261379242 valid_dice:0.41192954778671265 learning_rate:4.999999873689376e-05
+=======================================================
+ epoch_end: epoch:5 epoch_avg_loss:0.008703075504551332 epoch_avg_dice:0.24807067132658428
+ckpt_model_save because of 0.2145090565085411<=0.24807067132658428
+frozen_model_save frozen_model/5_0.248.pb
+563 ops written to frozen_model/5_0.248.pb.
+=======================================================
+epoch dataset initial spend time:11.46s  epoch steps:203
+  data_train_shape:(814, 256, 256) mask_train_shape:(814, 256, 256)
+  data_valid_shape:(204, 256, 256) mask_valid_shape:(204, 256, 256)
+epoch:6 steps:20 valid_loss:0.0054922248236835 valid_dice:0.37200337648391724 learning_rate:4.999999873689376e-05
+epoch:6 steps:40 valid_loss:0.01780359260737896 valid_dice:0.4548812508583069 learning_rate:4.999999873689376e-05
+epoch:6 steps:60 valid_loss:0.003426045412197709 valid_dice:0.29268231987953186 learning_rate:4.999999873689376e-05
+epoch:6 steps:80 valid_loss:0.0013421523617580533 valid_dice:0.0 learning_rate:4.999999873689376e-05
+epoch:6 steps:100 valid_loss:0.014741072431206703 valid_dice:0.44276899099349976 learning_rate:4.999999873689376e-05
+epoch:6 steps:120 valid_loss:0.0029316043946892023 valid_dice:0.13905514776706696 learning_rate:4.999999873689376e-05
+epoch:6 steps:140 valid_loss:0.013618790544569492 valid_dice:0.4935121536254883 learning_rate:4.999999873689376e-05
+epoch:6 steps:160 valid_loss:0.015727119520306587 valid_dice:0.43844279646873474 learning_rate:4.999999873689376e-05
+epoch:6 steps:180 valid_loss:0.006091888528317213 valid_dice:0.30466321110725403 learning_rate:4.999999873689376e-05
+epoch:6 steps:200 valid_loss:0.004351998679339886 valid_dice:0.23049411177635193 learning_rate:4.999999873689376e-05
+=======================================================
+ epoch_end: epoch:6 epoch_avg_loss:0.008552648930344733 epoch_avg_dice:0.3168503358960152
+ckpt_model_save because of 0.24807067132658428<=0.3168503358960152
+frozen_model_save frozen_model/6_0.317.pb
+563 ops written to frozen_model/6_0.317.pb.
+=======================================================
+epoch dataset initial spend time:8.51s  epoch steps:193
+  data_train_shape:(774, 256, 256) mask_train_shape:(774, 256, 256)
+  data_valid_shape:(194, 256, 256) mask_valid_shape:(194, 256, 256)
+epoch:7 steps:20 valid_loss:0.0035254680551588535 valid_dice:0.21347744762897491 learning_rate:4.999999873689376e-05
+epoch:7 steps:40 valid_loss:0.009955029934644699 valid_dice:0.44255125522613525 learning_rate:4.999999873689376e-05
+epoch:7 steps:60 valid_loss:0.009841416031122208 valid_dice:0.10303635150194168 learning_rate:4.999999873689376e-05
+epoch:7 steps:80 valid_loss:0.004062101244926453 valid_dice:0.46948060393333435 learning_rate:4.999999873689376e-05
+epoch:7 steps:100 valid_loss:0.004637580830603838 valid_dice:0.6286085844039917 learning_rate:4.999999873689376e-05
+epoch:7 steps:120 valid_loss:0.011794169433414936 valid_dice:0.0016097056213766336 learning_rate:4.999999873689376e-05
+epoch:7 steps:140 valid_loss:0.0003054719709325582 valid_dice:0.0 learning_rate:4.999999873689376e-05
+epoch:7 steps:160 valid_loss:0.053176917135715485 valid_dice:0.019559206441044807 learning_rate:4.999999873689376e-05
+epoch:7 steps:180 valid_loss:0.0069893947802484035 valid_dice:0.47037723660469055 learning_rate:4.999999873689376e-05
+=======================================================
+ epoch_end: epoch:7 epoch_avg_loss:0.011587505490751935 epoch_avg_dice:0.2609667101512766
+=======================================================
+epoch dataset initial spend time:7.80s  epoch steps:200
+  data_train_shape:(803, 256, 256) mask_train_shape:(803, 256, 256)
+  data_valid_shape:(201, 256, 256) mask_valid_shape:(201, 256, 256)
+epoch:8 steps:20 valid_loss:0.007872582413256168 valid_dice:0.048835139721632004 learning_rate:4.999999873689376e-05
+epoch:8 steps:40 valid_loss:0.011693624779582024 valid_dice:0.3176797330379486 learning_rate:4.999999873689376e-05
+epoch:8 steps:60 valid_loss:0.0074120876379311085 valid_dice:0.29234790802001953 learning_rate:4.999999873689376e-05
+epoch:8 steps:80 valid_loss:0.002707714680582285 valid_dice:0.09256616234779358 learning_rate:4.999999873689376e-05
+epoch:8 steps:100 valid_loss:0.00821961835026741 valid_dice:0.412778377532959 learning_rate:4.999999873689376e-05
+epoch:8 steps:120 valid_loss:0.006327683571726084 valid_dice:0.4024556875228882 learning_rate:4.999999873689376e-05
+epoch:8 steps:140 valid_loss:0.002494539599865675 valid_dice:0.4708997309207916 learning_rate:4.999999873689376e-05
+epoch:8 steps:160 valid_loss:0.007186808157712221 valid_dice:0.1820492297410965 learning_rate:4.999999873689376e-05
+epoch:8 steps:180 valid_loss:0.0054018208757042885 valid_dice:0.2469761073589325 learning_rate:4.999999873689376e-05
+epoch:8 steps:200 valid_loss:0.0037268931046128273 valid_dice:0.22934021055698395 learning_rate:4.999999873689376e-05
+=======================================================
+ epoch_end: epoch:8 epoch_avg_loss:0.006304337317124009 epoch_avg_dice:0.2695928286761045
+learning rate decay from 4.999999873689376e-05 to 2.499999936844688e-05
+=======================================================
+epoch dataset initial spend time:5.83s  epoch steps:198
+  data_train_shape:(794, 256, 256) mask_train_shape:(794, 256, 256)
+  data_valid_shape:(199, 256, 256) mask_valid_shape:(199, 256, 256)
+epoch:9 steps:20 valid_loss:0.014512937515974045 valid_dice:0.03361940383911133 learning_rate:2.499999936844688e-05
+epoch:9 steps:40 valid_loss:0.0010413157287985086 valid_dice:0.0 learning_rate:2.499999936844688e-05
+epoch:9 steps:60 valid_loss:0.004202311858534813 valid_dice:0.02571926638484001 learning_rate:2.499999936844688e-05
+epoch:9 steps:80 valid_loss:0.0052141305059194565 valid_dice:0.678331196308136 learning_rate:2.499999936844688e-05
+epoch:9 steps:100 valid_loss:0.009137213230133057 valid_dice:0.3757443428039551 learning_rate:2.499999936844688e-05
+epoch:9 steps:120 valid_loss:0.01416450459510088 valid_dice:0.6029300093650818 learning_rate:2.499999936844688e-05
+epoch:9 steps:140 valid_loss:0.011637229472398758 valid_dice:0.1757223755121231 learning_rate:2.499999936844688e-05
+epoch:9 steps:160 valid_loss:0.00027326488634571433 valid_dice:0.0 learning_rate:2.499999936844688e-05
+epoch:9 steps:180 valid_loss:0.0038557304069399834 valid_dice:0.763799786567688 learning_rate:2.499999936844688e-05
+=======================================================
+ epoch_end: epoch:9 epoch_avg_loss:0.00711540424446058 epoch_avg_dice:0.295096264531215
+=======================================================
+epoch dataset initial spend time:5.49s  epoch steps:201
+  data_train_shape:(806, 256, 256) mask_train_shape:(806, 256, 256)
+  data_valid_shape:(202, 256, 256) mask_valid_shape:(202, 256, 256)
+epoch:10 steps:20 valid_loss:0.00597440404817462 valid_dice:0.0016065789386630058 learning_rate:2.499999936844688e-05
+epoch:10 steps:40 valid_loss:0.008006696589291096 valid_dice:0.5710143446922302 learning_rate:2.499999936844688e-05
+epoch:10 steps:60 valid_loss:0.003769892267882824 valid_dice:0.5327721834182739 learning_rate:2.499999936844688e-05
+epoch:10 steps:80 valid_loss:0.00019177877402398735 valid_dice:0.0 learning_rate:2.499999936844688e-05
+epoch:10 steps:100 valid_loss:0.008892631158232689 valid_dice:0.5670496821403503 learning_rate:2.499999936844688e-05
+epoch:10 steps:120 valid_loss:0.017512744292616844 valid_dice:0.1936364322900772 learning_rate:2.499999936844688e-05
+epoch:10 steps:140 valid_loss:0.00013462665083352476 valid_dice:0.0 learning_rate:2.499999936844688e-05
+epoch:10 steps:160 valid_loss:0.0017176888650283217 valid_dice:0.0 learning_rate:2.499999936844688e-05
+epoch:10 steps:180 valid_loss:0.00024707464035600424 valid_dice:0.0 learning_rate:2.499999936844688e-05
+epoch:10 steps:200 valid_loss:0.01712867058813572 valid_dice:0.3258422911167145 learning_rate:2.499999936844688e-05
+=======================================================
+ epoch_end: epoch:10 epoch_avg_loss:0.006357620787457563 epoch_avg_dice:0.2191921512596309
+=======================================================

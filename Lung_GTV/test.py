@@ -111,7 +111,7 @@ with graph.as_default():
             print("patient{}:{} patient{}_softmax:{}".format(one_patient,dic_norm,one_patient,dic))
             out_txt.write("patient{}:{} patient{}_softmax:{}\n".format(one_patient,dic_norm,one_patient,dic))
             temp = np.argmax(temp,axis=-1)
-            np.save(os.path.join(test_root_task_single_patient_path ,"softmax.npy"),temp_sof)
+            # np.save(os.path.join(test_root_task_single_patient_path ,"softmax.npy"),temp_sof)
             saveAsNiiGz(temp, os.path.join(test_root_task_single_patient_path ,"test_label.nii.gz"), Spacing, Origin)
             del real
             del temp

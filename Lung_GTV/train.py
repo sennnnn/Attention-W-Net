@@ -1,6 +1,7 @@
 import os
 import time
 import process
+import numpy as np
 import tensorflow as tf
 
 from model import get_input_output_ckpt,unet
@@ -20,11 +21,11 @@ rate = 0.0001
 input_shape = (256,256)
 num_class = 2           # 背景和GTV
 last = True             # last为False，那么pattern就失去作用了，因为一切都将重新开始
-start_epoch = 85         # epoch 1~epoch 7的损失函数会有log0从而导致梯度爆炸
-pattern = "ckpt"
+start_epoch = 11         # epoch 1~epoch 7的损失函数会有log0从而导致梯度爆炸
+pattern = "pb"
 # 先验结果
 # weight = [0.0007440585488760174,0.999255941451124]
-weight = [5/8,3/8]
+weight = [455/(455+4398),4398/(455+4398)]
 
 train_path = os.path.join(root_path,"train",task_list[3])
 train_list = os.listdir(train_path)
@@ -46,7 +47,7 @@ if(pattern != "ckpt" and pattern != "pb"):
 else:
     if(pattern == "ckpt" or last == False):
         with graph.as_default():
-            weight = tf.constant(weight)
+            # weight = tf.constant(weight)
             x,y_hat = get_input_output_ckpt(unet,num_class)
             y = tf.placeholder(tf.float32,[None, None, None, num_class],name="input_y")
             lr_init = tf.placeholder(tf.float32,name='input_lr')
@@ -61,9 +62,9 @@ else:
             
             dice_index = tf_dice(y_softmax,y)
             # 明早起来看效果，而后换新损失函数
-            # loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y,logits=y_hat),name="loss") + (1-dice_index)
+            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y,logits=y_hat),name="loss")
             # 加权损失函数再加上dice的影响让loss与训练更相关
-            loss = weight_loss(y,y_hat,weight) + (1-dice_index)
+            # loss = tf.reduce_mean(weight_loss(y,y_hat,weight),name='loss')
             optimizer = tf.train.AdamOptimizer(learning_rate=lr).minimize(loss)
         
             dice_index_indentity = tf.identity(dice_index,name="dice")
@@ -110,7 +111,7 @@ with graph.as_default():
             pb_graph = load_graph(pb_name)
             sess = restore_from_pb(sess, pb_graph, meta_graph)
     else:
-        sess = restore_part_from_pb(sess,load_graph("model/77_0.925.pb"),graph)
+        sess = restore_part_from_pb(sess,load_graph("old/model_transfer_learning/77_0.925.pb"),graph)
     valid_log = {"loss":{},"dice":{}}
     valid_log_epochwise = {"loss":[100000],"dice":[0]}
     saved_valid_log_epochwise = {"loss":[100000],"dice":[0]}
@@ -132,16 +133,19 @@ with graph.as_default():
         start = time.time()
         data_epoch,mask_epoch = epoch_read(data,mask)
         end = time.time()
+        # 一阶段
         # 0~27 epoch没有使用数据增强，28~46 epoch开始使用数据增强，仅有5°旋转
         # 47 epoch开始使用10°旋转
         # epoch 76之后发现数据增强也无法解决问题，甚至还没有不加入数据增强更好，所以我决定用另一种方式来处理结果
         # 本来输出的应该是softmax处理之后的结果，我们将其视为概率，那么argmax输出的话，太过于极端，放弃argmax，当
         # 预测为肿瘤的概率达到一定概率而不一定要达到argmax的程度就输出结果。
         # 而后是重新开始训练了，采取小切片来进行勾画了，即裁剪后对。
+        # 三阶段
+        # 1~10 epoch使用数据增强，翻转、平移、旋转15° 11 epoch开始使用30°旋转
         data_epoch_train,data_epoch_valid,mask_epoch_train,mask_epoch_valid = \
-        train_test_split(data_epoch,mask_epoch,test_size=0.1,shuffle=True)
-        train_batch_object, valid_batch_object = train_batch(data_epoch_train, mask_epoch_train, True, 15, num_class),\
-                                                 train_batch(data_epoch_valid, mask_epoch_valid, True, 15, num_class)
+        train_test_split(data_epoch,mask_epoch,test_size=0.2,shuffle=True)
+        train_batch_object, valid_batch_object = train_batch(data_epoch_train, mask_epoch_train, True, True, 30, num_class),\
+                                                 train_batch(data_epoch_valid, mask_epoch_valid, True, True, 30, num_class)
         one_epoch_steps = data_epoch_train.shape[0]//batch_size
         show_string = "\
 epoch dataset initial spend time:%.2fs \
@@ -165,7 +169,7 @@ epoch dataset initial spend time:%.2fs \
                 one_epoch_avg_loss += los/(one_epoch_steps//20)
                 one_epoch_avg_dice += dic/(one_epoch_steps//20)
                 show_string = "epoch:{} steps:{} valid_loss:{} valid_dice:{} learning_rate:{}".format(i+1,j+1,los,dic,rate)
-                print(show_string)
+                print(show_string + '  ' + str(np.max(valid_batch_y)))
                 temp.write(show_string+'\n')
         
         show_string = "=======================================================\n \
@@ -174,7 +178,7 @@ epoch_end: epoch:{} epoch_avg_loss:{} epoch_avg_dice:{}\n".format(i+1,one_epoch_
         if(iflarger(valid_log_epochwise["dice"],one_epoch_avg_dice)):
             learning_rate_descent_flag += 1
         
-        if(learning_rate_descent_flag == 3):
+        if(learning_rate_descent_flag == 7):
             rate_once = rate
             _ = sess.run(decay_ops)
             rate = sess.run(lr)
