@@ -38,8 +38,8 @@ one_epoch_steps = data_train.shape[0]//batch_size
 # 1~24 epoch 使用了随机水平竖直翻转、15°旋转，此时测试结果会有左右肺互相混淆的情况，这是因为左右肺的灰度太过于相似，并且小器官分割效果比较差
 # 25 epoch 开始使用10°旋转，并禁用翻转
 # 55 epoch 开始使用5°旋转
-train_batch_object, valid_batch_object = train_batch(data_train, mask_train, False, 0, num_class),\
-                                         train_batch(data_valid, mask_valid, False, 0, num_class)
+train_batch_object, valid_batch_object = train_batch(data_train, mask_train,False, False, 0, num_class),\
+                                         train_batch(data_valid, mask_valid,False, False, 0, num_class)
 
 if not os.path.exists("train_valid.log"):
     temp = open("train_valid.log","w")
