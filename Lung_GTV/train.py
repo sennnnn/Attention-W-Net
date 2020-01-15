@@ -25,7 +25,8 @@ start_epoch = 11         # epoch 1~epoch 7的损失函数会有log0从而导致�
 pattern = "pb"
 # 先验结果
 # weight = [0.0007440585488760174,0.999255941451124]
-weight = [455/(455+4398),4398/(455+4398)]
+# weight = [455/(455+4398),4398/(455+4398)]
+weight = [3/8,5/8]
 
 train_path = os.path.join(root_path,"train",task_list[3])
 train_list = os.listdir(train_path)
@@ -47,7 +48,7 @@ if(pattern != "ckpt" and pattern != "pb"):
 else:
     if(pattern == "ckpt" or last == False):
         with graph.as_default():
-            # weight = tf.constant(weight)
+            weight = tf.constant(weight)
             x,y_hat = get_input_output_ckpt(unet,num_class)
             y = tf.placeholder(tf.float32,[None, None, None, num_class],name="input_y")
             lr_init = tf.placeholder(tf.float32,name='input_lr')
@@ -61,8 +62,8 @@ else:
             y_result = tf.get_default_graph().get_tensor_by_name("segementation_result:0")
             
             dice_index = tf_dice(y_softmax,y)
-            # 明早起来看效果，而后换新损失函数
-            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y,logits=y_hat),name="loss")
+            # 明早起来看效果，而后换新损失函数，给通道给了个先验加权
+            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y,logits=weight*y_hat),name="loss")
             # 加权损失函数再加上dice的影响让loss与训练更相关
             # loss = tf.reduce_mean(weight_loss(y,y_hat,weight),name='loss')
             optimizer = tf.train.AdamOptimizer(learning_rate=lr).minimize(loss)
