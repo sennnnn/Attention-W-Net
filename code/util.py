@@ -1,4 +1,5 @@
 import os
+import yaml
 import time
 import datetime
 import numpy as np
@@ -158,6 +159,37 @@ def tf_dice_index_norm(a,b,num_class,delta=0.0001):
     cross = tf.reduce_sum(a[...,1:]*b[...,1:])
     b_area = tf.cast(cross, tf.float32)
     return 2.*cross/(a_area+b_area+delta)
+
+def test_result_dir_initial(ifprocess,task_name,model_select):
+    test_result_root_path = "./test_result"
+    if(not os.path.exists(test_result_root_path)):
+        os.mkdir(test_result_root_path)
+    # 不论是pb模式还是ckpt模式其实都是用的最新的那一套权重，然而pb和ckpt是一样的，就姑且用这个命名了
+    test_result_task_root_path = os.path.join(test_result_root_path,task_name)
+    test_result_task_model_root_path = os.path.join(test_result_task_root_path,model_select)
+    addition_message = '_process' if ifprocess else '_raw'
+    newest_frozen_model = os.path.split(get_newest("frozen_model/{}/{}".format(task_name,model_select)))[1]
+    return_path = os.path.join(test_result_task_model_root_path,newest_frozen_model+addition_message)
+    if(not os.path.exists(return_path)):
+        os.makedirs(return_path,0o777)
+    out_txt = open("{}/result.txt".format(return_path),'w')
+    return return_path,out_txt
+
+def get_config_dict(config_path):
+    config_dict = open(config_path,"r")
+    config_dict = yaml.load(config_dict)
+    return config_dict
+
+def tuple_string_to_tuple(tuple_string):
+    temp = tuple_string.split(',')
+    tuple_list = []
+    for one in temp:
+        try:
+            element = int(one)
+        except:
+            element = float(one)
+        tuple_list.append(element)
+    return tuple(tuple_list)
 
 def weight_loss(label,predict,weight):
     predict = tf.nn.softmax(predict)

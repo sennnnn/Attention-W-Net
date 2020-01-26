@@ -6,21 +6,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split
-from util import one_hot,readImage
+from util import one_hot,readImage,get_config_dict
 
-task_list = ["HaN_OAR","Naso_GTV","Thoracic_OAR","Lung_GTV"]
-root_path = r"E:\dataset\zhongshan_hospital\cstro"
+config_dict = get_config_dict("task.yaml")
 
 def _preprocess_oneslice(one_slice,tran,filp,angle):
     """
-    cstro比赛统一为512*512的规格
-    主要项目：裁剪、翻转、旋转
+    Cstro Challenge:The shape of slice is mainly 512x512.
+    Project:flip、rotate、standardization
     args:
     one_slice : A numpy mat and it shapes like 2x512x512 and the data type is [np.float32,np.uint8]
-    还是把数据和标签一起做数据增强才没那么麻烦
     
     return:
-    数据增强完毕的单张切片
+    tuple:(data_slice,mask_slice)
     """
     out_data = one_slice[0]
     out_mask = one_slice[1]
@@ -57,16 +55,33 @@ def _preprocess_oneslice(one_slice,tran,filp,angle):
     
     # 最大最小归一化、函数转化归一化、z-score标准化，仅针对数据而不是标签
     """
-    z-score 标准化
+    z-score Standardization
     """
     mean,stdDev = cv2.meanStdDev(out_data)
     mean,stdDev = mean[0][0],stdDev[0][0]
     out_data = (out_data-mean)/stdDev
     return (out_data,out_mask)
 
-def read_train_data(train_path,train_list,input_shape):
+def length_norm_crop(slice,general_shape,crop_x_range,crop_y_range):
+    # Lung
+    # crop_x_range:(117,417) crop_y_range:(99,399)
+    # nasopharynx
+    # crop_x_range:(160,384) crop_y_range:(99,399)
+    slice = cv2.resize(slice, general_shape)
+    slice = slice[np.ix_(range(*crop_x_range),range(*crop_y_range))]
+    return slice
+
+def read_train_data(train_path,train_list,input_shape,crop_x_range,crop_y_range):
     """
-    载入所有的训练数据
+    Read all of the training data.
+    Args:
+    train_path:the training data root path.
+    train_list:the training data list.
+    input_shape:the shape of the net input.
+
+    Return:
+    data:the training data block.
+    mask:the training label block.
     """
     data_list = []
     mask_list = []
@@ -74,14 +89,59 @@ def read_train_data(train_path,train_list,input_shape):
         data = readImage(os.path.join(train_path,patient,'data.nii'))
         mask = readImage(os.path.join(train_path,patient,'label.nii'))
         for i,j in zip(data,mask):
-            # 裁剪，裁剪是最优先的，是数据简化的最有效方式
-            one_data_slice = i[np.ix_(range(117,417),range(99,399))]
-            one_mask_slice = j[np.ix_(range(117,417),range(99,399))]
-            one_data_slice = cv2.resize(one_data_slice.astype(np.float32),input_shape)
-            one_mask_slice = cv2.resize(one_mask_slice,input_shape)
-            data_list.append(one_data_slice)
-            mask_list.append(one_mask_slice)
+            i = length_norm_crop(i,(512,512),crop_x_range,crop_y_range)
+            j = length_norm_crop(j,(512,512),crop_x_range,crop_y_range)
+            i = cv2.resize(i.astype(np.float32),input_shape)
+            j = cv2.resize(j,input_shape)
+            data_list.append(i)
+            mask_list.append(j)
+    return data_list,mask_list
+
+def swap(a,b):
+    temp = a
+    a = b
+    b = temp
+    return a,b
+
+def OAR_epoch_read(data,mask,rate):
+    data_list = []
+    mask_list = []
+    for i,j in zip(data,mask):
+        temp = random.randint(1,rate[1])
+        if(temp <= rate[0]):
+            data_list.append(i)
+            mask_list.append(j)
     return np.array(data_list),np.array(mask_list)
+
+def GTV_epoch_read(data,mask,positive_get_rate,negetive_get_rate):
+    # 鼻咽癌的GTV中正负样本比例为5411:740
+    data_list = []
+    mask_list = []
+    # 正样本中提取一部分，负样本中提取一部分
+    for i,j in zip(data,mask):
+        if(np.max(j) == 0):
+            flag = random.randint(1,negetive_get_rate[1])
+            if(flag <= negetive_get_rate[0]):
+                data_list.append(i)
+                mask_list.append(j)
+        else:
+            flag = random.randint(1,positive_get_rate[1])
+            if(flag <= positive_get_rate[0]):
+                data_list.append(i)
+                mask_list.append(j)
+    return np.array(data_list),np.array(mask_list)
+
+def epoch_train_get(data_list,mask_list,folder_rate):
+    """
+    单个epoch只读入训练集的部分，这是因为我感觉训练集对于网络来说太大了，反馈太慢，训练耗时太长
+    """
+    total_length = len(data_list)
+    length = int(folder_rate*total_length)
+    for i in range(total_length):
+        temp = random.randint(0,i)
+        data_list[i],data_list[temp] = swap(data_list[i],data_list[temp])
+        mask_list[i],mask_list[temp] = swap(mask_list[i],mask_list[temp])
+    return np.array(data_list[0:length]),np.array(mask_list[0:length])
 
 class train_batch(object):
     def __init__(self,data_block,mask_block,trans,flip,angle,num_class):
@@ -106,13 +166,15 @@ class train_batch(object):
         return np.expand_dims(np.array(batch_data),-1),one_hot(np.array(batch_mask),self.num_class)
 
 class test_batch(object):
-    def __init__(self,one_patient_data,one_patient_mask,num_class,input_shape):
+    def __init__(self,one_patient_data,one_patient_mask,num_class,input_shape,crop_x_range,crop_y_range):
         self.data = one_patient_data
         self.mask = one_patient_mask
         self.num_class = num_class
         self.length = one_patient_data.shape[0]
         self.index = 0
         self.input_shape = input_shape
+        self.x_range = crop_x_range
+        self.y_range = crop_y_range
 
     def __do(self,data,mask,start,end):
         batch_data = []
@@ -120,8 +182,8 @@ class test_batch(object):
         data = data[start:end]
         mask = mask[start:end]
         for i,j in zip(data,mask):
-            i = i[np.ix_(range(117,417),range(99,399))]
-            j = j[np.ix_(range(117,417),range(99,399))]
+            i = length_norm_crop(i.astype(np.float32),(512,512),self.x_range,self.y_range)
+            j = length_norm_crop(j.astype(np.uint8),(512,512),self.x_range,self.y_range)
             i = cv2.resize(i.astype(np.float32),self.input_shape)
             j = cv2.resize(j,self.input_shape)
             i,j = _preprocess_oneslice((i,j),False,False,0)
@@ -147,16 +209,21 @@ class test_batch(object):
             self.index += batch_size
             return self.__do(self.data,self.mask,start,end),True
 
-def recover(patient_mask_predict,shape,ifprocess,num_class):
-    # 还原
+def recover(patient_mask_predict,shape,ifprocess,num_class,crop_x_range,crop_y_range,task_name):
     length = len(patient_mask_predict)
-    out = np.array([cv2.resize(x.astype(np.uint8), (300,300)) for x in patient_mask_predict],dtype=np.uint8)
+    w = crop_x_range[1]-crop_x_range[0]
+    h = crop_y_range[1]-crop_y_range[0]
+    out = np.array([cv2.resize(x.astype(np.uint8), (w,h)) for x in patient_mask_predict],dtype=np.uint8)
     temp = np.zeros(shape=shape, dtype=np.uint8)
-    temp[np.ix_(range(0,length),range(117,417),range(99,399))] = out
-    # 后处理之后
+    for i in range(length):
+        temp_slice = np.zeros(shape=(512,512),dtype=np.uint8)
+        temp_slice[np.ix_(range(*crop_x_range),range(*crop_y_range))] = out[i]
+        temp[i] = cv2.resize(temp_slice, tuple(temp[i].shape))
+    # After postprocessing...
     temp = one_hot(temp, num_class)
+    print(temp.shape)
     if(ifprocess):
-        temp = np.array([after_process(x) for x in temp])
+        temp = np.array([after_process(temp[i],task_name) for i in range(temp.shape[0])])
     return temp
 
 def dilate(src, kernel_size=(3,3)):
@@ -220,31 +287,32 @@ def findMaxContours(src):
     area = []
     if(len(contours) == 0):
         return 0
-
     for k in range(len(contours)):
         area.append(cv2.contourArea(contours[k]))
-
     return area[np.argmax(np.array(area))]
 
-def after_process(one_slice):
+def after_process(one_slice,task):
     # after one_hot multi slice block
     # 这里只是用到了简单的形态学腐蚀，那么我们再假设，左肺最右点不可能有右肺，右肺最左点不可能有左肺
     # 搜索左肺最右点，即y最大点
     # 输入进来的为病人的完整block，且已经one_hot编码
-    one_slice = one_slice
-    one_slice_dst = np.expand_dims(one_slice[...,0],axis=-1)
+    one_slice_mid_dst = np.expand_dims(one_slice[...,0],axis=-1)
     # 腐蚀处理
     for j in range(1,one_slice.shape[-1]):
         temp = np.expand_dims(erode(one_slice[...,j]),axis=-1)
-        one_slice_dst = np.concatenate([one_slice_dst,temp],axis=-1)
-    # 左右肺排查，已经膨胀处理
+        one_slice_mid_dst = np.concatenate([one_slice_mid_dst,temp],axis=-1)
+    # 左右肺排查，已经膨胀处理，这是针对肺部的操作
     # 测试出来的有效面积
-    if(findMaxContours(one_slice_dst[...,2]) > 800):
-        one_slice_dst[...,2] = left_lung_after_process(one_slice_dst[...,2],one_slice_dst[...,1])
-    if(findMaxContours(one_slice_dst[...,1]) > 800):
-        one_slice_dst[...,1] = right_lung_after_process(one_slice_dst[...,1],one_slice_dst[...,2])
-    one_slice_dst[...,2] = dilate(one_slice_dst[...,2])
-    one_slice_dst[...,1] = dilate(one_slice_dst[...,1])
+    if(task == "Thoracic_OAR"):
+        if(findMaxContours(one_slice_mid_dst[...,2]) > 800):
+            one_slice_mid_dst[...,2] = left_lung_after_process(one_slice_mid_dst[...,2],one_slice_mid_dst[...,1])
+        if(findMaxContours(one_slice_mid_dst[...,1]) > 800):
+            one_slice_mid_dst[...,1] = right_lung_after_process(one_slice_mid_dst[...,1],one_slice_mid_dst[...,2])
+    
+    one_slice_dst = np.expand_dims(one_slice_mid_dst[...,0],axis=-1)
+    for j in range(1,one_slice.shape[-1]):
+        temp = np.expand_dims(dilate(one_slice_mid_dst[...,j]),axis=-1)
+        one_slice_dst = np.concatenate([one_slice_dst,temp],axis=-1)
     return one_slice_dst
 
 if __name__ == "__main__":

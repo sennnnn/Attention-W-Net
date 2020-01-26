@@ -8,6 +8,8 @@ try.py
 *.npy
 */*.npy
 **/*.npy
+*.log
+*/*.log
 
 # folder
 __pycache__
@@ -30,3 +32,6 @@ model
 # **/try
 papers
 old
+latest_model
+trash
+test_result

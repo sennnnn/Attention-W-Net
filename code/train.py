@@ -1,45 +1,53 @@
 import os
 import time
 import process
+import numpy as np
 import tensorflow as tf
 
-from model import get_input_output_ckpt,unet
+from model import get_input_output_ckpt,unet,unet_SE
 from util import one_hot,tf_dice,iflarger,ifsmaller,frozen_graph,load_graph,\
-                 get_newest,restore_from_pb
-from process import read_train_data, train_batch, root_path, task_list
+                 get_newest,restore_from_pb,restore_part_from_pb,weight_loss,tuple_string_to_tuple
+from process import read_train_data, train_batch,OAR_epoch_read,GTV_epoch_read,config_dict
 from sklearn.model_selection import train_test_split
 
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 session = tf.InteractiveSession(config=config)
 
+OAR_OR_GTV = 'OAR' # OAR:task1 or task3 GTV:task2 or task4
+task_number = 'task1'
+
+model_dict = {
+    'unet' : unet,
+    'unet-CAB' : unet_SE
+}
+
+config_dict_lite = config_dict[OAR_OR_GTV][task_number]
+root_path = config_dict['root_path']
+task_name = config_dict_lite['task_name']
+train_path = os.path.join(root_path,"train",task_name)
+train_list = os.listdir(train_path)
+
 # hyper parameters
 batch_size = 4
 max_epoches = 200
 rate = 0.00001
-input_shape = (256,256)
-num_class = 1
-last = True            # last为False，那么pattern就失去作用了，因为一切都将重新开始
-start_epoch = 67
-pattern = "pb"
+input_shape = tuple_string_to_tuple(config_dict_lite['input_shape'])
+num_class = config_dict_lite['obj_num']+1
+last = True             # If choosing to train by old weights.
+start_epoch = 1
+pattern = "ckpt"          # the mode how to load the weights.
+crop_x_range = tuple_string_to_tuple(config_dict_lite['crop_x_range'])
+crop_y_range = tuple_string_to_tuple(config_dict_lite['crop_y_range'])
+model_select = "unet" # "unet" or "unet-CAB"
 
-train_path = os.path.join(root_path,"train",task_list[2])
-train_list = os.listdir(train_path)
+ckpt_path = "ckpt/{}/{}".format(task_name,model_select)
+frozen_model_path = "frozen_model/{}/{}".format(task_name,model_select)
 
 start = time.time()
-data,mask = read_train_data(train_path,train_list,input_shape)
+data,mask = read_train_data(train_path,train_list,input_shape,crop_x_range,crop_y_range)
 end = time.time()
-data_train,data_valid,mask_train,mask_valid = train_test_split(data,mask,test_size=0.1,shuffle=True)
-print("spend time:%.2fs\ndata_train_shape:{} mask_train_shape:{}\ndata_valid_shape:{}\
- mask_valid_shape:{}".format(data_train.shape,mask_train.shape,data_valid.shape,mask_valid.shape)%(end-start))
-
-one_epoch_steps = data_train.shape[0]//batch_size
-
-# 1~24 epoch 使用了随机水平竖直翻转、15°旋转，此时测试结果会有左右肺互相混淆的情况，这是因为左右肺的灰度太过于相似，并且小器官分割效果比较差
-# 25 epoch 开始使用10°旋转，并禁用翻转
-# 55 epoch 开始使用5°旋转
-train_batch_object, valid_batch_object = train_batch(data_train, mask_train,False, False, 0, num_class),\
-                                         train_batch(data_valid, mask_valid,False, False, 0, num_class)
+print("read ALL...\ndata length:{} mask length:{}".format(len(data),len(mask)))
 
 if not os.path.exists("train_valid.log"):
     temp = open("train_valid.log","w")
@@ -53,7 +61,8 @@ if(pattern != "ckpt" and pattern != "pb"):
 else:
     if(pattern == "ckpt" or last == False):
         with graph.as_default():
-            x,y_hat = get_input_output_ckpt(unet,num_class)
+            # weight = tf.constant(weight)
+            x,y_hat = get_input_output_ckpt(model_dict[model_select],num_class)
             y = tf.placeholder(tf.float32,[None, None, None, num_class],name="input_y")
             lr_init = tf.placeholder(tf.float32,name='input_lr')
 
@@ -65,10 +74,10 @@ else:
             y_softmax = tf.get_default_graph().get_tensor_by_name("softmax_y:0")
             y_result = tf.get_default_graph().get_tensor_by_name("segementation_result:0")
 
+            dice_index = tf_dice(y_softmax,y)
+            # 明早起来看效果，而后换新损失函数，给通道给了个先验加权
             loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y,logits=y_hat),name="loss")
             optimizer = tf.train.AdamOptimizer(learning_rate=lr).minimize(loss)
-            
-            dice_index = tf_dice(y_softmax,y)
             dice_index_indentity = tf.identity(dice_index,name="dice")
     else:
         if(len([x for x in os.listdir("frozen_model") if(os.path.splitext(x) == ".pb")])):
@@ -81,7 +90,7 @@ else:
             # 主要是卷积层和batch_norm层，卷积层主要有卷积核和偏置两个变量，而batch_norm主要有均值、方差、映射斜率gama和映射偏置beta
             # AdamOptimizer这一操作会直接将之前所有变量根据链式法则都创建一个梯度，无论是卷积、batch_norm还是激活函数都有梯度
             # 从pb文件中加载获得常量之后，然后根据常量在新图中再构建一次，将这些常量的值赋给元图
-            saver = tf.train.import_meta_graph('ckpt/latest_model.meta')
+            saver = tf.train.import_meta_graph('{}/best_model.meta'.format(ckpt_path))
             meta_graph = tf.get_default_graph()
             x = meta_graph.get_tensor_by_name("input_x:0")
             y = meta_graph.get_tensor_by_name("input_y:0")
@@ -102,9 +111,13 @@ with graph.as_default():
     sess.run(init)
     if(last==True):
         if(pattern=="ckpt"):
-            saver.restore(sess,"ckpt/latest_model")
+            try:
+                saver.restore(sess,"{}/best_model".format(ckpt_path))
+                print("The latest checkpoint model is loaded...")
+            except:
+                sess = restore_from_pb(sess, load_graph(get_newest(frozen_model_path)), graph)
         else:
-            pb_name = get_newest("frozen_model")
+            pb_name = get_newest(frozen_model_path)
             print("{},the latest frozen graph is loaded...".format(pb_name))
             pb_graph = load_graph(pb_name)
             sess = restore_from_pb(sess, pb_graph, meta_graph)
@@ -114,10 +127,10 @@ with graph.as_default():
     saved_valid_log_epochwise = {"loss":[100000],"dice":[0]}
     learning_rate_descent_flag = 0
     sess.run(init_ops,feed_dict={"input_lr:0":rate})
-    if(not os.path.exists("ckpt")):
-        os.mkdir("ckpt")
-    if(not os.path.exists("frozen_model")):
-        os.mkdir("frozen_model")
+    if(not os.path.exists(ckpt_path)):
+        os.makedirs(ckpt_path)
+    if(not os.path.exists(frozen_model_path)):
+        os.makedirs(frozen_model_path)
     for i in range(start_epoch-1,max_epoches):
         # one epoch
         valid_log["loss"][i] = []
@@ -125,28 +138,59 @@ with graph.as_default():
         temp = open("train_valid.log","a")
         one_epoch_avg_dice = 0
         one_epoch_avg_loss = 0
+
+        # 每个epoch重新初始化一次训练数据集
+        if(OAR_OR_GTV == "OAR"):
+            get_rate = tuple_string_to_tuple(config_dict_lite['rate'])
+            start = time.time()
+            data_epoch,mask_epoch = OAR_epoch_read(data,mask,get_rate)
+            end = time.time()
+        elif(OAR_OR_GTV == "GTV"):
+            get_positive_rate = tuple_string_to_tuple(config_dict_lite['positive_get_rate'])
+            get_negetive_rate = tuple_string_to_tuple(config_dict_lite['negetive_get_rate'])
+            start = time.time()
+            data_epoch,mask_epoch = GTV_epoch_read(data,mask,get_positive_rate,get_negetive_rate)
+            end = time.time()
+        else:
+            print("bone!")
+            exit()
+        data_epoch_train,data_epoch_valid,mask_epoch_train,mask_epoch_valid = \
+        train_test_split(data_epoch,mask_epoch,test_size=0.2,shuffle=True)
+        train_batch_object, valid_batch_object = train_batch(data_epoch_train, mask_epoch_train, False, False, 0, num_class),\
+                                                 train_batch(data_epoch_valid, mask_epoch_valid, False, False, 0, num_class)
+        one_epoch_steps = data_epoch_train.shape[0]//batch_size
+        show_string = "\
+epoch dataset initial spend time:%.2fs \
+ epoch steps:{}\n \
+ data_train_shape:{} mask_train_shape:{}\n \
+ data_valid_shape:{} mask_valid_shape:{}".format(one_epoch_steps, \
+ data_epoch_train.shape,mask_epoch_train.shape, \
+ data_epoch_valid.shape,mask_epoch_valid.shape)%(end-start)
+        print(show_string)
+        temp.write(show_string+'\n')
         for j in range(one_epoch_steps):
             # one step
             # get one batch data and label
             train_batch_x,train_batch_y = train_batch_object.get_batch(batch_size)
             _ = sess.run(optimizer,feed_dict={x:train_batch_x,y:train_batch_y})
-            if((j+1)%20==0):
+            if((j+1)%5==0):
                 valid_batch_x,valid_batch_y = valid_batch_object.get_batch(batch_size)
                 dic,los,rate = sess.run([dice_index,loss,lr],feed_dict={x:valid_batch_x,y:valid_batch_y})
                 valid_log["loss"][i].append(los)
                 valid_log["dice"][i].append(dic)
-                one_epoch_avg_loss += los/(one_epoch_steps//20)
-                one_epoch_avg_dice += dic/(one_epoch_steps//20)
+                one_epoch_avg_loss += los/(one_epoch_steps//5)
+                one_epoch_avg_dice += dic/(one_epoch_steps//5)
                 show_string = "epoch:{} steps:{} valid_loss:{} valid_dice:{} learning_rate:{}".format(i+1,j+1,los,dic,rate)
                 print(show_string)
                 temp.write(show_string+'\n')
-        
-        show_string = "=======================================================\n\
+        show_string = "=======================================================\n \
 epoch_end: epoch:{} epoch_avg_loss:{} epoch_avg_dice:{}\n".format(i+1,one_epoch_avg_loss,one_epoch_avg_dice)
 
-        if(iflarger(valid_log_epochwise["dice"],one_epoch_avg_dice)):
+        if(not iflarger(saved_valid_log_epochwise["dice"],one_epoch_avg_dice)):
             learning_rate_descent_flag += 1
         
+        show_string += "learning_rate_descent_flag:{}\n".format(learning_rate_descent_flag)
+
         if(learning_rate_descent_flag == 3):
             rate_once = rate
             _ = sess.run(decay_ops)
@@ -156,11 +200,12 @@ epoch_end: epoch:{} epoch_avg_loss:{} epoch_avg_dice:{}\n".format(i+1,one_epoch_
         
         if(iflarger(saved_valid_log_epochwise["dice"],one_epoch_avg_dice)):
             show_string += "ckpt_model_save because of {}<={}\n".format(saved_valid_log_epochwise["dice"][-1],one_epoch_avg_dice)
-            saver.save(sess, "ckpt/latest_model")
-            pb_name = "frozen_model/{}_%.3f.pb".format(i+1)%(one_epoch_avg_dice)
+            saver.save(sess, "{}/best_model".format(ckpt_path))
+            pb_name = "{}/{}_%.3f.pb".format(frozen_model_path,i+1)%(one_epoch_avg_dice)
             show_string += "frozen_model_save {}\n".format(pb_name)
             show_string += frozen_graph(sess,pb_name)
             saved_valid_log_epochwise['dice'].append(one_epoch_avg_dice)
+            learning_rate_descent_flag = 0
 
         if(ifsmaller(saved_valid_log_epochwise["loss"],one_epoch_avg_loss)):
             saved_valid_log_epochwise['loss'].append(one_epoch_avg_loss)
@@ -172,6 +217,6 @@ epoch_end: epoch:{} epoch_avg_loss:{} epoch_avg_dice:{}\n".format(i+1,one_epoch_
         print(show_string)
         temp.write(show_string)
         temp.close()
-    saver.save(sess, "ckpt/latest_model")
-    frozen_graph(sess,"last.pb")
+    saver.save(sess, "{}/best_model".format(ckpt_path))
+    frozen_graph(sess,"{}/last.pb".format(frozen_model_path))
     sess.close()
