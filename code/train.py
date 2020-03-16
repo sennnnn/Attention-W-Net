@@ -1,222 +1,307 @@
 import os
 import time
-import process
 import numpy as np
 import tensorflow as tf
 
-from model import get_input_output_ckpt,unet,unet_SE
-from util import one_hot,tf_dice,iflarger,ifsmaller,frozen_graph,load_graph,\
-                 get_newest,restore_from_pb,restore_part_from_pb,weight_loss,tuple_string_to_tuple
-from process import read_train_data, train_batch,OAR_epoch_read,GTV_epoch_read,config_dict
-from sklearn.model_selection import train_test_split
+from model import *
+from model.model_base import *
+from model.loss_metric import *
+from model.model_util import frozen_graph,restore_from_pb,load_graph
+from util import iflarger,ifsmaller,get_newest,dict_save,dict_load
 
-config = tf.ConfigProto()
-config.gpu_options.allow_growth = True
-session = tf.InteractiveSession(config=config)
+class train_all(object):
+    model_dict = \
+    {
+        'unet' : Unet.unet,
+        'unet-CAB' : Unet_SE.unet_SE,
+        'unet-input-fuse' : FUnet.unet_input_fuse,
+        'unet-middle-fuse' : FUnet.unet_middle_fuse,
+        'unet-output-fuse' : FUnet.unet_output_fuse,
+        'r2Unet':R2Unet.r2Unet,
+        'attentionUnet':AttentionUnet.AttentionUnet
+    }
+    sequence_select = {1: ['T1', 'T2', 'T1D'], \
+                       2: ['T1-T1D', 'T1-T2'],
+                       3: ['T1-T1D-T2']}
+    def __init__(self, last, pattern, model_key, pb_path, ckpt_path, num_class, initial_channel, sequence):
+        self.graph = tf.Graph()
+        self.last_flag = last
+        self.pattern = pattern
+        self.pb_path = pb_path
+        self.ckpt_path = ckpt_path
+        self.model_key = model_key
+        self.num_class = num_class
+        self.initial_channel = initial_channel
+        self.sequence_parttern = sequence if(sequence != 'default') else 'default'
+        self.valid_log_metric_only_path = 'build/{}-{}/valid_metric_loss_only.log'.format(model_key, self.sequence_parttern)
+        self.detail_log_path = "build/{}-{}/valid_detail.log".format(model_key, self.sequence_parttern)
 
-OAR_OR_GTV = 'OAR' # OAR:task1 or task3 GTV:task2 or task4
-task_number = 'task1'
+    def _input_compose(self):
+        x_T1 = tf.placeholder(tf.float32, [None, None, None, 1], name='data_T1')
+        x_T1D = tf.placeholder(tf.float32, [None, None, None, 1], name='data_T1D')
+        x_T2 = tf.placeholder(tf.float32, [None, None, None, 1], name='data_T2')
+        self.input_collecting = {'T1':x_T1, 'T1D':x_T1D, 'T2':x_T2}
 
-model_dict = {
-    'unet' : unet,
-    'unet-CAB' : unet_SE
-}
+        return self.input_collecting
 
-config_dict_lite = config_dict[OAR_OR_GTV][task_number]
-root_path = config_dict['root_path']
-task_name = config_dict_lite['task_name']
-train_path = os.path.join(root_path,"train",task_name)
-train_list = os.listdir(train_path)
-
-# hyper parameters
-batch_size = 4
-max_epoches = 200
-rate = 0.00001
-input_shape = tuple_string_to_tuple(config_dict_lite['input_shape'])
-num_class = config_dict_lite['obj_num']+1
-last = True             # If choosing to train by old weights.
-start_epoch = 1
-pattern = "ckpt"          # the mode how to load the weights.
-crop_x_range = tuple_string_to_tuple(config_dict_lite['crop_x_range'])
-crop_y_range = tuple_string_to_tuple(config_dict_lite['crop_y_range'])
-model_select = "unet" # "unet" or "unet-CAB"
-
-ckpt_path = "ckpt/{}/{}".format(task_name,model_select)
-frozen_model_path = "frozen_model/{}/{}".format(task_name,model_select)
-
-start = time.time()
-data,mask = read_train_data(train_path,train_list,input_shape,crop_x_range,crop_y_range)
-end = time.time()
-print("read ALL...\ndata length:{} mask length:{}".format(len(data),len(mask)))
-
-if not os.path.exists("train_valid.log"):
-    temp = open("train_valid.log","w")
-else:
-    temp = open("train_valid.log","a")
-
-graph = tf.Graph()
-if(pattern != "ckpt" and pattern != "pb"):
-    print("The pattern must be ckpt or pb.")
-    exit()
-else:
-    if(pattern == "ckpt" or last == False):
-        with graph.as_default():
-            # weight = tf.constant(weight)
-            x,y_hat = get_input_output_ckpt(model_dict[model_select],num_class)
-            y = tf.placeholder(tf.float32,[None, None, None, num_class],name="input_y")
-            lr_init = tf.placeholder(tf.float32,name='input_lr')
-
-            lr = tf.Variable(rate,name='learning_rate')
-            init_ops = tf.assign(lr,lr_init,name='initial_lr')
-            
-            decay_ops = tf.assign(lr,lr/2,name='learning_rate_decay')
-
-            y_softmax = tf.get_default_graph().get_tensor_by_name("softmax_y:0")
-            y_result = tf.get_default_graph().get_tensor_by_name("segementation_result:0")
-
-            dice_index = tf_dice(y_softmax,y)
-            # 明早起来看效果，而后换新损失函数，给通道给了个先验加权
-            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y,logits=y_hat),name="loss")
-            optimizer = tf.train.AdamOptimizer(learning_rate=lr).minimize(loss)
-            dice_index_indentity = tf.identity(dice_index,name="dice")
-    else:
-        if(len([x for x in os.listdir("frozen_model") if(os.path.splitext(x) == ".pb")])):
-            print("sorry,there is not pb file.")
-            exit()
+    def _parse_model_key(self):
+        input_collecting = self._input_compose()
+        args = []
+        length = len(self.sequence_parttern.split('-'))
+        if(self.model_key == 'unet' or self.model_key == 'unet-CAB'):
+            self.sequence_parttern = 'T1' if(self.sequence_parttern == 'default') else self.sequence_parttern
+            # assert self.sequence_parttern != 'default', "There is only one input sequence, \
+            # so you must select a input sequence name. That is that the sequence can't be default"
+            if(self.sequence_parttern in self.sequence_select[1]):
+                args.append(input_collecting[self.sequence_parttern])
         else:
-            # 本来frozen_model一般用来进行测试，但是可以强行将已经被固定为常量的变量逆转化为变量。
-            # frozen_model与checkpoint_model除了常量和变量的op在计算图上有区别之外其他都是一样的。
-            # 一个常量仅有read一个op，而变量却有read、initial、assign三个op
-            # 主要是卷积层和batch_norm层，卷积层主要有卷积核和偏置两个变量，而batch_norm主要有均值、方差、映射斜率gama和映射偏置beta
-            # AdamOptimizer这一操作会直接将之前所有变量根据链式法则都创建一个梯度，无论是卷积、batch_norm还是激活函数都有梯度
-            # 从pb文件中加载获得常量之后，然后根据常量在新图中再构建一次，将这些常量的值赋给元图
-            saver = tf.train.import_meta_graph('{}/best_model.meta'.format(ckpt_path))
-            meta_graph = tf.get_default_graph()
-            x = meta_graph.get_tensor_by_name("input_x:0")
-            y = meta_graph.get_tensor_by_name("input_y:0")
-            y_softmax = meta_graph.get_tensor_by_name("softmax_y:0")
-            y_result = meta_graph.get_tensor_by_name("segementation_result:0")
-            loss = meta_graph.get_tensor_by_name('loss:0')
-            lr = meta_graph.get_tensor_by_name('learning_rate:0')
-            init_ops = meta_graph.get_operation_by_name('initial_lr')
-            decay_ops = meta_graph.get_operation_by_name('learning_rate_decay')
-            optimizer = meta_graph.get_operation_by_name("Adam")
-            dice_index = meta_graph.get_tensor_by_name("dice:0")
-            graph = meta_graph
+            # input compose according to the sequence selection.
+            [args.append(y) for x,y in input_collecting.items() if(x in self.sequence_parttern.split('-'))]
 
-with graph.as_default():
-    init = tf.global_variables_initializer()
-    saver = tf.train.Saver()
-    sess = tf.Session(config=config,graph=graph)
-    sess.run(init)
-    if(last==True):
-        if(pattern=="ckpt"):
+        return tuple(args)
+
+    def _feed_dict(self, T1, T1D, T2, keep_prob):
+        ret = {}
+        sequence_parttern = self.sequence_parttern.split('-')
+        label_temp = None
+        if('T1' in sequence_parttern):
+            ret['data_T1:0'] = T1[0]
+            label_temp = T1[1]
+        if('T1D' in sequence_parttern):
+            ret['data_T1D:0'] = T1D[0]
+            label_temp = T1D[1]
+        if('T2' in sequence_parttern):
+            ret['data_T2:0'] = T2[0]
+            label_temp = T2[1]
+        if(len(sequence_parttern) > 1): ret['label:0'] = T1[1]
+        else: ret['label:0'] = label_temp
+        ret['dropout_rate:0'] = keep_prob
+        return ret
+
+    def _train_graph_compose(self):
+        if(self.pattern != "ckpt" and self.pattern != "pb"):
+            print("The pattern must be ckpt or pb.")
+            exit()
+        elif(self.pattern == "ckpt" or self.last_flag == 'False'):
+            with self.graph.as_default() as g:
+                # network input & output
+                inputs = self._parse_model_key()
+                y = tf.placeholder(tf.float32, [None, None, None, self.num_class], name='label')
+                keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
+                construct_network(self.model_dict[self.model_key], inputs, self.num_class, self.initial_channel, \
+                                keep_prob)
+
+                # learning rate relating things
+                lr_input = tf.placeholder(tf.float32, name='lr_input')
+                lr = tf.Variable(1., name='lr')
+
+                lr_init_op = tf.assign(lr, lr_input, name='lr_initial_op')
+                lr_decay_op = tf.assign(lr, lr/2, name='lr_decay_op')
+
+                self.lr_relating = {'lr':lr, 'lr_initial_op':lr_init_op, 'lr_decay_op':lr_decay_op}
+
+                # loss & metric & optimizer relating things.
+                predict = g.get_tensor_by_name('predict:0')
+                softmax = g.get_tensor_by_name('predict_softmax:0')
+                argmax = g.get_tensor_by_name('predict_argmax:0')
+                
+                self.output_relating = {'predict_softmax':softmax, 'predict_argmax':argmax}
+
+                dice = tf_dice(softmax, y)
+                dice_identity = tf.identity(dice, name='dice')
+                loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y, logits=predict))
+                loss_identity = tf.identity(loss, name='loss')
+                
+                self.loss = loss
+                self.metric = dice
+
+                self.optimizer = tf.train.AdamOptimizer(learning_rate=lr, name='optimizer').minimize(loss)
+                
+        else:
+            if(len([x for x in os.listdir(self.pb_path) if(os.path.splitext(x) == ".pb")])):
+                print("sorry,there is not pb file.")
+                exit()
+            else:
+                with self.graph.as_default() as g:
+                    saver = tf.train.import_meta_graph('{}/best_model.meta'.format(self.ckpt_path))
+
+                    # learning rate relating things
+                    lr = g.get_tensor_by_name('lr:0')
+                    lr_init_op = g.get_operation_by_name('lr_initial_op')
+                    lr_decay_op = g.get_operation_by_name('lr_decay_op')
+
+                    self.lr_relating = {'lr':lr, 'lr_initial_op':lr_init_op, 'lr_decay_op':lr_decay_op}
+
+                    # loss & metric & optimizer relating things.                
+                    softmax = g.get_tensor_by_name('predict_softmax:0')
+                    argmax = g.get_tensor_by_name('predict_argmax:0')
+
+                    self.output_relating = {'predict_softmax':softmax, 'predict_argmax':argmax}
+
+                    loss = g.get_tensor_by_name('loss:0')
+                    dice = g.get_tensor_by_name("dice:0")
+                    
+                    self.loss = loss 
+                    self.metric = dice
+
+                    self.optimizer = g.get_operation_by_name('optimizer')
+
+    def _restore(self, sess, saver, graph, pattern):
+        if(pattern == "ckpt"):
             try:
-                saver.restore(sess,"{}/best_model".format(ckpt_path))
+                saver.restore(sess,"{}/best_model".format(self.ckpt_path))
                 print("The latest checkpoint model is loaded...")
             except:
-                sess = restore_from_pb(sess, load_graph(get_newest(frozen_model_path)), graph)
+                sess = restore_from_pb(sess, load_graph(get_newest("{}".format(self.pb_path))), graph)
         else:
-            pb_name = get_newest(frozen_model_path)
+            pb_name = get_newest("{}".format(self.pb_path))
             print("{},the latest frozen graph is loaded...".format(pb_name))
             pb_graph = load_graph(pb_name)
-            sess = restore_from_pb(sess, pb_graph, meta_graph)
+            sess = restore_from_pb(sess, pb_graph, graph)
 
-    valid_log = {"loss":{},"dice":{}}
-    valid_log_epochwise = {"loss":[100000],"dice":[0]}
-    saved_valid_log_epochwise = {"loss":[100000],"dice":[0]}
-    learning_rate_descent_flag = 0
-    sess.run(init_ops,feed_dict={"input_lr:0":rate})
-    if(not os.path.exists(ckpt_path)):
-        os.makedirs(ckpt_path)
-    if(not os.path.exists(frozen_model_path)):
-        os.makedirs(frozen_model_path)
-    for i in range(start_epoch-1,max_epoches):
-        # one epoch
-        valid_log["loss"][i] = []
-        valid_log["dice"][i] = []
-        temp = open("train_valid.log","a")
-        one_epoch_avg_dice = 0
-        one_epoch_avg_loss = 0
-
-        # 每个epoch重新初始化一次训练数据集
-        if(OAR_OR_GTV == "OAR"):
-            get_rate = tuple_string_to_tuple(config_dict_lite['rate'])
-            start = time.time()
-            data_epoch,mask_epoch = OAR_epoch_read(data,mask,get_rate)
-            end = time.time()
-        elif(OAR_OR_GTV == "GTV"):
-            get_positive_rate = tuple_string_to_tuple(config_dict_lite['positive_get_rate'])
-            get_negetive_rate = tuple_string_to_tuple(config_dict_lite['negetive_get_rate'])
-            start = time.time()
-            data_epoch,mask_epoch = GTV_epoch_read(data,mask,get_positive_rate,get_negetive_rate)
-            end = time.time()
+    def _log_write(self, show_string=None, end=False):
+        if(show_string == None):
+            if not os.path.exists(self.detail_log_path):
+                self.log_file = open(self.detail_log_path, "w")
+            else:
+                self.log_file = open(self.detail_log_path, "a")
         else:
-            print("bone!")
+            print(show_string)
+            self.log_file.write(show_string + '\n')
+        
+        if(end):
+            self.log_file.close()
+
+    def _log_dict_save(self, start=False):
+        if(start):
+            if(os.path.exists(self.valid_log_metric_only_path)):
+                self.valid_log_dict = dict_load(self.valid_log_metric_only_path)
+            else:
+                self.valid_log_dict = {}
+                # 用于记录训练过程，分为两种模式
+                self.valid_log_dict['stepwise'] = {'loss':{}, 'metric':{}}
+                self.valid_log_dict['epochwise'] = {'loss':[], 'metric':[]}
+        else:
+            dict_save(self.valid_log_dict, self.valid_log_metric_only_path)
+
+    def _model_save(self, sess, saver, epoch, pattern, one_epoch_avg_metric):
+        return_string = ''
+        if(pattern == 'ckpt'):
+            saver.save(sess, "{}/best_model".format(self.ckpt_path))
+            pb_name = "{}/{}_%.3f.pb".format(self.pb_path, epoch)%(one_epoch_avg_metric)
+            return_string += 'frozen_model_save {}\n'.format(pb_name)
+            return_string += frozen_graph(sess, pb_name)
+        elif(pattern == 'pb'):
+            # 因为是从 frozen_model 中 restore 所以应该将 restore_from_pb 中多出来的那些 assign 操作去掉
+            saver.save(sess, "{}/best_model".format(self.ckpt_path))
+            pb_name = "{}/{}_%.3f.pb".format(self.pb_path, epoch)%(one_epoch_avg_metric)
+            return_string += 'frozen_model_save {}\n'.format(pb_name)
+            return_string += frozen_graph(sess, pb_name)
+        else:
+            print('pattern must be ckpt or pb!')
             exit()
-        data_epoch_train,data_epoch_valid,mask_epoch_train,mask_epoch_valid = \
-        train_test_split(data_epoch,mask_epoch,test_size=0.2,shuffle=True)
-        train_batch_object, valid_batch_object = train_batch(data_epoch_train, mask_epoch_train, False, False, 0, num_class),\
-                                                 train_batch(data_epoch_valid, mask_epoch_valid, False, False, 0, num_class)
-        one_epoch_steps = data_epoch_train.shape[0]//batch_size
-        show_string = "\
-epoch dataset initial spend time:%.2fs \
- epoch steps:{}\n \
- data_train_shape:{} mask_train_shape:{}\n \
- data_valid_shape:{} mask_valid_shape:{}".format(one_epoch_steps, \
- data_epoch_train.shape,mask_epoch_train.shape, \
- data_epoch_valid.shape,mask_epoch_valid.shape)%(end-start)
-        print(show_string)
-        temp.write(show_string+'\n')
-        for j in range(one_epoch_steps):
-            # one step
-            # get one batch data and label
-            train_batch_x,train_batch_y = train_batch_object.get_batch(batch_size)
-            _ = sess.run(optimizer,feed_dict={x:train_batch_x,y:train_batch_y})
-            if((j+1)%5==0):
-                valid_batch_x,valid_batch_y = valid_batch_object.get_batch(batch_size)
-                dic,los,rate = sess.run([dice_index,loss,lr],feed_dict={x:valid_batch_x,y:valid_batch_y})
-                valid_log["loss"][i].append(los)
-                valid_log["dice"][i].append(dic)
-                one_epoch_avg_loss += los/(one_epoch_steps//5)
-                one_epoch_avg_dice += dic/(one_epoch_steps//5)
-                show_string = "epoch:{} steps:{} valid_loss:{} valid_dice:{} learning_rate:{}".format(i+1,j+1,los,dic,rate)
-                print(show_string)
-                temp.write(show_string+'\n')
-        show_string = "=======================================================\n \
-epoch_end: epoch:{} epoch_avg_loss:{} epoch_avg_dice:{}\n".format(i+1,one_epoch_avg_loss,one_epoch_avg_dice)
 
-        if(not iflarger(saved_valid_log_epochwise["dice"],one_epoch_avg_dice)):
-            learning_rate_descent_flag += 1
-        
-        show_string += "learning_rate_descent_flag:{}\n".format(learning_rate_descent_flag)
-
-        if(learning_rate_descent_flag == 3):
-            rate_once = rate
-            _ = sess.run(decay_ops)
-            rate = sess.run(lr)
-            show_string += "learning rate decay from {} to {}\n".format(rate_once,rate)
+        return return_string
+    
+    def training(self, learning_rate, max_epoches, one_epoch_steps, start_epoch,\
+                 train_generator, valid_generator, decay_patientce, valid_step, \
+                 keep_prob, tf_config):
+        self._log_dict_save(start=True)
+        self._train_graph_compose()
+        with self.graph.as_default() as g:
+            init = tf.global_variables_initializer()
+            saver = tf.train.Saver(tf.global_variables(scope='network'))
+            sess = tf.Session(config=tf_config, graph=g)
+            sess.run(init)
+            if(self.last_flag):
+                self._restore(sess, saver, g, self.pattern)
+            # 记录训练过程的字符串
+            show_string = None
+            # 用于比较是否进行学习率衰减的
+            saved_valid_log_epochwise = {'loss':[100000], 'metric':[0]}
+            # 学习率衰减标志位
             learning_rate_descent_flag = 0
-        
-        if(iflarger(saved_valid_log_epochwise["dice"],one_epoch_avg_dice)):
-            show_string += "ckpt_model_save because of {}<={}\n".format(saved_valid_log_epochwise["dice"][-1],one_epoch_avg_dice)
-            saver.save(sess, "{}/best_model".format(ckpt_path))
-            pb_name = "{}/{}_%.3f.pb".format(frozen_model_path,i+1)%(one_epoch_avg_dice)
-            show_string += "frozen_model_save {}\n".format(pb_name)
-            show_string += frozen_graph(sess,pb_name)
-            saved_valid_log_epochwise['dice'].append(one_epoch_avg_dice)
-            learning_rate_descent_flag = 0
+            # 将学习率初始化
+            sess.run(self.lr_relating['lr_initial_op'], feed_dict={"lr_input:0":learning_rate})
+            # 开始训练前，检查一遍权重保存路径
+            if(not os.path.exists(self.ckpt_path)):
+                os.makedirs(self.ckpt_path, 0o777)
+            if(not os.path.exists(self.pb_path)):
+                os.makedirs(self.pb_path, 0o777)
+            for i in range(start_epoch-1, max_epoches):
+                # one epoch
+                # 打开 log 文件
+                self._log_write()
+                # 不同 epoch 的训练中间结果分别保存
+                self.valid_log_dict['stepwise']['loss'][i+1] = []
+                self.valid_log_dict['stepwise']['metric'][i+1] = []
+                # 用来学习率衰减的指标
+                one_epoch_avg_loss = 0
+                one_epoch_avg_metric = 0
+                epochwise_train_generator = train_generator.epochwise_iter()
+                epochwise_valid_generator = valid_generator.epochwise_iter()
+                show_string = "epoch {}\ntrain dataset number:{} valid dataset number:{}"\
+                              .format(i+1, train_generator.slice_count, valid_generator.slice_count)
+                self._log_write(show_string=show_string)
+                for j in range(one_epoch_steps):
+                    # one step
+                    T1,T1D,T2 = next(epochwise_train_generator)
+                    feed_dict = self._feed_dict(T1, T1D, T2, keep_prob)
+                    # 三个输入，拿 T1 的作为标签
+                    _ = sess.run(self.optimizer, feed_dict=feed_dict)
+                    if((j+1)%valid_step == 0):
+                        T1,T1D,T2 = next(epochwise_valid_generator)
+                        feed_dict = self._feed_dict(T1, T1D, T2, keep_prob)
+                        los,met = sess.run([self.loss, self.metric], feed_dict=feed_dict)
+                        # 保存每次 valid 的指标
+                        self.valid_log_dict['stepwise']["loss"][i+1].append(los)
+                        self.valid_log_dict['stepwise']["metric"][i+1].append(met)
+                        one_epoch_avg_loss += los
+                        one_epoch_avg_metric += met
+                        show_string = "epoch:{} steps:{}/{} valid_loss:{} valid_dice:{} learning_rate:{}"\
+                                      .format(i+1, j+1, one_epoch_steps, los, met, learning_rate)
+                        self._log_write(show_string=show_string)
 
-        if(ifsmaller(saved_valid_log_epochwise["loss"],one_epoch_avg_loss)):
-            saved_valid_log_epochwise['loss'].append(one_epoch_avg_loss)
+                one_epoch_avg_loss = one_epoch_avg_loss/(one_epoch_steps//valid_step)
+                one_epoch_avg_metric = one_epoch_avg_metric/(one_epoch_steps//valid_step)
+                show_string = "=======================================================\n\
+epoch_end epoch:{} epoch_avg_loss:{} epoch_avg_metric:{}\n"\
+                .format(i+1, one_epoch_avg_loss, one_epoch_avg_metric)
 
-        valid_log_epochwise["loss"].append(one_epoch_avg_loss)
-        valid_log_epochwise["dice"].append(one_epoch_avg_dice)
-        show_string += "=======================================================\n"
+                # 以 metric 为基准，作为学习率衰减的参考指标
+                if(not iflarger(saved_valid_log_epochwise["metric"], one_epoch_avg_metric)):
+                    learning_rate_descent_flag += 1
+                
+                show_string += "learning_rate_descent_flag:{}\n".format(learning_rate_descent_flag)
+                
+                if(learning_rate_descent_flag == decay_patientce):
+                    learning_rate_once = learning_rate
+                    _ = sess.run(self.lr_relating['lr_decay_op'])
+                    learning_rate = sess.run(self.lr_relating['lr'])
+                    show_string += "learning rate decay from {} to {}\n".format(learning_rate_once, learning_rate)
+                    learning_rate_descent_flag = 0
 
-        print(show_string)
-        temp.write(show_string)
-        temp.close()
-    saver.save(sess, "{}/best_model".format(ckpt_path))
-    frozen_graph(sess,"{}/last.pb".format(frozen_model_path))
-    sess.close()
+                if(iflarger(saved_valid_log_epochwise["metric"], one_epoch_avg_metric)):
+                    show_string += "ckpt_model_save because of {}<={}\n"\
+                                    .format(saved_valid_log_epochwise["metric"][-1], one_epoch_avg_metric)
+                    show_string += self._model_save(sess, saver, i+1, self.pattern, one_epoch_avg_metric)
+                    saved_valid_log_epochwise['metric'].append(one_epoch_avg_metric)
+                    learning_rate_descent_flag = 0
+
+                if(ifsmaller(saved_valid_log_epochwise["loss"], one_epoch_avg_loss)):
+                    saved_valid_log_epochwise['loss'].append(one_epoch_avg_loss)
+
+                # 保存每个 epoch 的平均指标
+                self.valid_log_dict['epochwise']['loss'].append(one_epoch_avg_loss)
+                self.valid_log_dict['epochwise']['metric'].append(one_epoch_avg_metric)
+                
+                # 保存 log_dict
+                self._log_dict_save()
+
+                show_string += "======================================================="
+                
+                self._log_write(show_string=show_string)
+                self._log_write(end=True)
+            saver.save(sess, "{}/best_model".format(self.ckpt_path))
+            frozen_graph(sess,"{}/last.pb".format(self.pb_path))
+            sess.close()

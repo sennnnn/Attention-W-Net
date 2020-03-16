@@ -1,98 +1,55 @@
 import os
-import yaml
 import time
+import random
 import datetime
 import numpy as np
-import tensorflow as tf
 import SimpleITK as stk
 
 def readNiiAll(nii_path):
     image = stk.ReadImage(nii_path)
     array = stk.GetArrayFromImage(image)
+
     return image.GetSpacing(),image.GetOrigin(),array
 
 def readImage(nii_path):
     image = stk.ReadImage(nii_path)
+
     return stk.GetArrayFromImage(image)
 
-def saveAsNiiGz(numpy_array,nii_path,spacing,origin):
+def saveAsNiiGz(numpy_array, nii_path, spacing, origin):
     image = stk.GetImageFromArray(numpy_array)
     image.SetSpacing(spacing);image.SetOrigin(origin)
     stk.WriteImage(image,nii_path)
-    print("nii file is saved as {}".format(nii_path))
+    print('nii file is saved as {}'.format(nii_path))
+
+def saveInfo(info, txt_path):
+    f = open(txt_path, 'w')
+    f.write(str(info))
+    f.close()
+
+def loadInfo(txt_path):
+    f = open(txt_path, 'r')
+    
+    return eval(f.read())
 
 def get_newest(dir_path):
     file_list = os.listdir(dir_path)
     newest_file = os.path.join(dir_path,file_list[0])
     for filename in file_list:
-        one_file = os.path.join(dir_path,filename)
+        one_file = os.path.join(dir_path, filename)
         if(get_ctime(newest_file) < get_ctime(one_file)):
             newest_file = one_file
+
     return newest_file 
 
-def get_ctime(file_path,ifstamp=True):
+def get_ctime(file_path, ifstamp=True):
     if(ifstamp):
         return os.path.getctime(file_path)
     else:
         timeStruct = time.localtime(os.path.getctime(file_path))
         return time.strftime("%Y-%m-%d %H:%M:%S",timeStruct)
 
-def load_graph(frozen_graph_filename):
-    with tf.gfile.GFile(frozen_graph_filename, "rb") as f:
-        graph_def = tf.GraphDef()
-        graph_def.ParseFromString(f.read())
-
-    with tf.Graph().as_default() as graph:
-        tf.import_graph_def(graph_def, name="")
-
-    print("load graph {} ...".format(frozen_graph_filename))
-    return graph
-
-def restore_part_from_pb(sess,frozen_graph_oar,meta_graph):
-    # 只导入部分肺部权重，将最后一层卷积层扔掉
-    ops = frozen_graph_oar.get_operations()
-    meta_ops = meta_graph.get_operations()
-    ops_selected = [x for x in ops if('/read' in x.name)]
-    ops_selected = [x.name.replace('/read','') for x in ops_selected if('conv2d_22' not in x.name and \
-                    'batch_normalization_26' not in x.name)]
-    tensors_constant = [frozen_graph_oar.get_tensor_by_name(x+':0') for x in ops_selected]
-    tensors_variables = [meta_graph.get_tensor_by_name(x+':0') for x in ops_selected]
-    do_list = []
-    sess_local = tf.Session(graph=frozen_graph_oar)
-    for i in range(len(ops_selected)):
-        temp = sess_local.run(tensors_constant[i])
-        do_list.append(tf.assign(tensors_variables[i],temp))
-    sess_local.close()
-    sess.run(do_list)
-    return sess
-
-def restore_from_pb(sess,frozen_graph,meta_graph):
-    # frozen_graph 与 meta_graph 应该是相互匹配的
-    ops = frozen_graph.get_operations()
-    ops_restore = [x.name.replace('/read','') for x in ops if('/read' in x.name)]
-    tensors_constant = [frozen_graph.get_tensor_by_name(x+':0') for x in ops_restore]
-    tensors_variables = [meta_graph.get_tensor_by_name(x+':0') for x in ops_restore]
-    do_list = []
-    sess_local = tf.Session(graph=frozen_graph)
-    for i in range(len(ops_restore)):
-        temp = sess_local.run(tensors_constant[i])
-        do_list.append(tf.assign(tensors_variables[i],temp))
-    sess_local.close()
-    sess.run(do_list)
-    return sess
-
-
-def frozen_graph(sess, output_graph):
-    output_graph_def = tf.graph_util.convert_variables_to_constants(sess, # 因为计算图上只有ops没有变量，所以要通过会话，来获得变量有哪些
-                                                                   tf.get_default_graph().as_graph_def(),
-                                                                   ["segementation_result","dice"])
-
-    with open(output_graph,"wb") as f:
-        f.write(output_graph_def.SerializeToString())
-
-    return "{} ops written to {}.\n".format(len(output_graph_def.node), output_graph)
-
-def ifsmaller(price_list,price):
+def ifsmaller(price_list, price):
     if(len(price_list) == 0):
         return 0
     else:
@@ -101,7 +58,7 @@ def ifsmaller(price_list,price):
         else:
             return 0
 
-def iflarger(price_list,price):
+def iflarger(price_list, price):
     if(len(price_list) == 0):
         return 0
     else:
@@ -110,13 +67,59 @@ def iflarger(price_list,price):
         else:
             return 0
 
+def read_train_valid_data(dataset_path, valid_rate=0.2, ifrandom=True):
+    f = open(dataset_path, 'r')
+    info = f.readlines()
+    path_list = info[1:]
+    path_list = [line.strip() for line in path_list]
+    
+    # 计算训练集和验证集的条目数量
+    all_count = int(info[0].split(':')[1])
+    valid_count = int(all_count * valid_rate)
+
+    # 为训练集和验证集分配数据条目
+    if(ifrandom):
+        random.shuffle(path_list)
+    
+    valid_path_list = path_list[:valid_count]
+    train_path_list = path_list[valid_count:]
+
+    return train_path_list,valid_path_list
+
+def read_test_data(dataset_path):
+    f = open(dataset_path, 'r')
+    info = f.readlines()
+
+    return info
+
+def dict_save(dict_to_save, save_path):
+    f = open(save_path, 'w')
+    f.write(str(dict_to_save))
+    f.close()
+
+def dict_load(load_path):
+    f = open(load_path, 'r')
+    temp = eval(f.read())
+    f.close()
+    
+    return temp
+
+def average(iterable_object):
+    length = 0
+    summary = 0
+    for i in iterable_object:
+        length += 1
+        summary += i
+    
+    return summary/length
+
 def one_hot(nparray, depth=0, on_value=1, off_value=0):
     if depth == 0:
         depth = np.max(nparray) + 1
     # 深度应该符合one_hot条件，其实keras有to_categorical(data,n_classes,dtype=float..)弄成one_hot
     assert np.max(nparray) < depth, "the max index of nparray: {} is larger than depth: {}".format(np.max(nparray), depth)
     shape = nparray.shape
-    out = np.ones((*shape, depth),np.uint8) * off_value
+    out = np.ones((*shape, depth), np.uint8) * off_value
     indices = []
     for i in range(nparray.ndim):
         tiles = [1] * nparray.ndim
@@ -129,69 +132,5 @@ def one_hot(nparray, depth=0, on_value=1, off_value=0):
         indices.append(r)
     indices.append(nparray)
     out[tuple(indices)] = on_value
+
     return out
-
-def np_dice_index(a,b,delta=0.0001):
-    a_area = np.sum(a[...,1:],dtype=np.float32)
-    b_area = np.sum(b[...,1:],dtype=np.float32)
-    cross = np.sum(a[...,1:]*b[...,1:],dtype=np.float32)
-    return 2*cross/(a_area+b_area+delta)
-
-def tf_dice(a,b,smooth=0.00001):
-    a_area = tf.reduce_sum(a[...,1:])
-    b_area = tf.reduce_sum(b[...,1:])
-    a_area = tf.cast(a_area, tf.float32)
-    b_area = tf.cast(b_area, tf.float32)
-    cross_area = tf.reduce_sum(a[...,1:]*b[...,1:])
-    cross_area = tf.cast(cross_area, tf.float32)
-    return 2.*cross_area/(a_area+b_area+smooth)
-
-def tf_dice_index_norm(a,b,num_class,delta=0.0001):
-    # 输入为softmax则可以帮助one_hot编码之后再比较
-    a = tf.argmax(a,axis=-1)
-    a = tf.one_hot(a, num_class, 1, 0)
-    b = tf.argmax(b,axis=-1)
-    b = tf.one_hot(b, num_class, 1, 0)
-    a_area = tf.reduce_sum(a[...,1:])
-    b_area = tf.reduce_sum(b[...,1:])
-    a_area = tf.cast(a_area, tf.float32)
-    b_area = tf.cast(b_area, tf.float32)
-    cross = tf.reduce_sum(a[...,1:]*b[...,1:])
-    b_area = tf.cast(cross, tf.float32)
-    return 2.*cross/(a_area+b_area+delta)
-
-def test_result_dir_initial(ifprocess,task_name,model_select):
-    test_result_root_path = "./test_result"
-    if(not os.path.exists(test_result_root_path)):
-        os.mkdir(test_result_root_path)
-    # 不论是pb模式还是ckpt模式其实都是用的最新的那一套权重，然而pb和ckpt是一样的，就姑且用这个命名了
-    test_result_task_root_path = os.path.join(test_result_root_path,task_name)
-    test_result_task_model_root_path = os.path.join(test_result_task_root_path,model_select)
-    addition_message = '_process' if ifprocess else '_raw'
-    newest_frozen_model = os.path.split(get_newest("frozen_model/{}/{}".format(task_name,model_select)))[1]
-    return_path = os.path.join(test_result_task_model_root_path,newest_frozen_model+addition_message)
-    if(not os.path.exists(return_path)):
-        os.makedirs(return_path,0o777)
-    out_txt = open("{}/result.txt".format(return_path),'w')
-    return return_path,out_txt
-
-def get_config_dict(config_path):
-    config_dict = open(config_path,"r")
-    config_dict = yaml.load(config_dict)
-    return config_dict
-
-def tuple_string_to_tuple(tuple_string):
-    temp = tuple_string.split(',')
-    tuple_list = []
-    for one in temp:
-        try:
-            element = int(one)
-        except:
-            element = float(one)
-        tuple_list.append(element)
-    return tuple(tuple_list)
-
-def weight_loss(label,predict,weight):
-    predict = tf.nn.softmax(predict)
-    cross = -tf.reduce_sum(weight*label*tf.log(predict+3e-9),axis=-1)
-    return cross

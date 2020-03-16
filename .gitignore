@@ -1,37 +1,12 @@
+# global
+
 # file
-*.txt
-*/*.txt
-**/*.txt
 try.py
-*/try.py
-**/try.py
-*.npy
-*/*.npy
-**/*.npy
-*.log
-*/*.log
 
 # folder
 __pycache__
-*/__pycache__
-**/__pycache__
 frozen_model
-*/frozen_model
-**/frozen_model
 ckpt
-*/ckpt
-**/ckpt
 .vscode
-*/.vscode
-**/.vscode
-model
-*/model
-**/model
-# try
-# */try
-# **/try
-papers
+build
 old
-latest_model
-trash
-test_result
