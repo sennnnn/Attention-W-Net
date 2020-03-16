@@ -2,11 +2,18 @@
 
 # file
 try.py
+*.zip
 
 # folder
-__pycache__
-frozen_model
-ckpt
-.vscode
-build
-old
+__pycache__/
+frozen_model/
+ckpt/
+.vscode/
+build/
+old/
+
+# local
+
+# folder
+code/dataset/train/
+code/dataset/test/

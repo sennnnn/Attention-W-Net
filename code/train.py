@@ -14,16 +14,11 @@ class train_all(object):
     {
         'unet' : Unet.unet,
         'unet-CAB' : Unet_SE.unet_SE,
-        'unet-input-fuse' : FUnet.unet_input_fuse,
-        'unet-middle-fuse' : FUnet.unet_middle_fuse,
-        'unet-output-fuse' : FUnet.unet_output_fuse,
         'r2Unet':R2Unet.r2Unet,
-        'attentionUnet':AttentionUnet.AttentionUnet
+        'attentionUnet':AttentionUnet.AttentionUnet,
+        'hybridUnet':HybridUnet.hybridAttentionUnet
     }
-    sequence_select = {1: ['T1', 'T2', 'T1D'], \
-                       2: ['T1-T1D', 'T1-T2'],
-                       3: ['T1-T1D-T2']}
-    def __init__(self, last, pattern, model_key, pb_path, ckpt_path, num_class, initial_channel, sequence):
+    def __init__(self, last, pattern, model_key, pb_path, ckpt_path, num_class, initial_channel, target):
         self.graph = tf.Graph()
         self.last_flag = last
         self.pattern = pattern
@@ -32,51 +27,14 @@ class train_all(object):
         self.model_key = model_key
         self.num_class = num_class
         self.initial_channel = initial_channel
-        self.sequence_parttern = sequence if(sequence != 'default') else 'default'
-        self.valid_log_metric_only_path = 'build/{}-{}/valid_metric_loss_only.log'.format(model_key, self.sequence_parttern)
-        self.detail_log_path = "build/{}-{}/valid_detail.log".format(model_key, self.sequence_parttern)
+        self.valid_log_metric_only_path = 'build/{}-{}/valid_metric_loss_only.log'.format(model_key, target)
+        self.detail_log_path = "build/{}-{}/valid_detail.log".format(model_key, target)
 
     def _input_compose(self):
-        x_T1 = tf.placeholder(tf.float32, [None, None, None, 1], name='data_T1')
-        x_T1D = tf.placeholder(tf.float32, [None, None, None, 1], name='data_T1D')
-        x_T2 = tf.placeholder(tf.float32, [None, None, None, 1], name='data_T2')
-        self.input_collecting = {'T1':x_T1, 'T1D':x_T1D, 'T2':x_T2}
+        x = tf.placeholder(tf.float32, [None, None, None, 1], name='data')
+        self.input_collecting = x
 
         return self.input_collecting
-
-    def _parse_model_key(self):
-        input_collecting = self._input_compose()
-        args = []
-        length = len(self.sequence_parttern.split('-'))
-        if(self.model_key == 'unet' or self.model_key == 'unet-CAB'):
-            self.sequence_parttern = 'T1' if(self.sequence_parttern == 'default') else self.sequence_parttern
-            # assert self.sequence_parttern != 'default', "There is only one input sequence, \
-            # so you must select a input sequence name. That is that the sequence can't be default"
-            if(self.sequence_parttern in self.sequence_select[1]):
-                args.append(input_collecting[self.sequence_parttern])
-        else:
-            # input compose according to the sequence selection.
-            [args.append(y) for x,y in input_collecting.items() if(x in self.sequence_parttern.split('-'))]
-
-        return tuple(args)
-
-    def _feed_dict(self, T1, T1D, T2, keep_prob):
-        ret = {}
-        sequence_parttern = self.sequence_parttern.split('-')
-        label_temp = None
-        if('T1' in sequence_parttern):
-            ret['data_T1:0'] = T1[0]
-            label_temp = T1[1]
-        if('T1D' in sequence_parttern):
-            ret['data_T1D:0'] = T1D[0]
-            label_temp = T1D[1]
-        if('T2' in sequence_parttern):
-            ret['data_T2:0'] = T2[0]
-            label_temp = T2[1]
-        if(len(sequence_parttern) > 1): ret['label:0'] = T1[1]
-        else: ret['label:0'] = label_temp
-        ret['dropout_rate:0'] = keep_prob
-        return ret
 
     def _train_graph_compose(self):
         if(self.pattern != "ckpt" and self.pattern != "pb"):
@@ -85,10 +43,10 @@ class train_all(object):
         elif(self.pattern == "ckpt" or self.last_flag == 'False'):
             with self.graph.as_default() as g:
                 # network input & output
-                inputs = self._parse_model_key()
+                x = tf.placeholder(tf.float32, [None, None, None, 1], name='data')
                 y = tf.placeholder(tf.float32, [None, None, None, self.num_class], name='label')
                 keep_prob = tf.placeholder(tf.float32, name='dropout_rate')
-                construct_network(self.model_dict[self.model_key], inputs, self.num_class, self.initial_channel, \
+                construct_network(self.model_dict[self.model_key], x, self.num_class, self.initial_channel, \
                                 keep_prob)
 
                 # learning rate relating things
@@ -245,13 +203,13 @@ class train_all(object):
                 self._log_write(show_string=show_string)
                 for j in range(one_epoch_steps):
                     # one step
-                    T1,T1D,T2 = next(epochwise_train_generator)
-                    feed_dict = self._feed_dict(T1, T1D, T2, keep_prob)
+                    data,label = next(epochwise_train_generator)
+                    feed_dict = {'data:0': data, 'label:0': label, 'dropout_rate:0': keep_prob}
                     # 三个输入，拿 T1 的作为标签
                     _ = sess.run(self.optimizer, feed_dict=feed_dict)
                     if((j+1)%valid_step == 0):
-                        T1,T1D,T2 = next(epochwise_valid_generator)
-                        feed_dict = self._feed_dict(T1, T1D, T2, keep_prob)
+                        data,label = next(epochwise_valid_generator)
+                        feed_dict = {'data:0': data, 'label:0': label, 'dropout_rate:0': keep_prob}
                         los,met = sess.run([self.loss, self.metric], feed_dict=feed_dict)
                         # 保存每次 valid 的指标
                         self.valid_log_dict['stepwise']["loss"][i+1].append(los)

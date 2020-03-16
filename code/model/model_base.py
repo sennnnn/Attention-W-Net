@@ -6,6 +6,53 @@ DECAY_BATCH_NORM = 0.9
 EPSILON = 1E-05
 LEAKY_RELU = 0.1
 
+def AC(input, filters, rate):
+    """
+    atrous convolution
+    Args:
+        input:tensor that will be operated.
+        filters:convolutional kernel channel size.
+        rate:the convolution kernel expandation rate.
+    Return:
+        input:tensor that has been operated.
+    """
+    c = input.get_shape().as_list()[-1]
+    filters_variable = tf.Variable(tf.truncated_normal([3, 3, c, filters], dtype=tf.float32))
+    input = tf.nn.atrous_conv2d(input, filters_variable, rate, padding='SAME')
+
+    return input
+
+def C(input, filters, strides=1, kernel_size=3):
+    """
+    convolution only
+    Args:
+        input:tensor that will be operated.
+        filters:convolutional kernel channel size.
+        strides:the convolutional kernel move length of one calculation.
+        kernel_size:convolutional kernel size.
+    Return:
+        input:tensor that has been operated.
+    """
+    input = layers.conv2d(input, filters, kernel_size, use_bias=True ,strides=strides, padding='same', \
+                        kernel_regularizer=tf.contrib.layers.l2_regularizer(0.1))
+
+    return input
+
+def ACB(input, filters, rate):
+    """
+    atrous convolution + batch normalization
+    Args:
+        input:tensor that will be operated.
+        filters:convolutional kernel channel size.
+        rate:the convolution kernel expandation rate.
+    Return:
+        input:tensor that has been operated.
+    """
+    input = AC(input, filters, rate)
+    input = layers.batch_normalization(input, momentum=DECAY_BATCH_NORM, epsilon=EPSILON)
+
+    return input
+
 def CB(input, filters, strides=1, kernel_size=3):
     """
     convolution + batch normalization
@@ -41,6 +88,22 @@ def CBR(input, filters, strides=1, kernel_size=3):
     
     return input
 
+def ACBR(input, filters, rate):
+    """
+    atrous convolution + batch normalization
+    Args:
+        input:tensor that will be operated.
+        filters:convolutional kernel channel size.
+        rate:the convolution kernel expandation rate.
+    Return:
+        input:tensor that has been operated.
+    """
+    input = AC(input, filters, rate)
+    input = layers.batch_normalization(input, momentum=DECAY_BATCH_NORM, epsilon=EPSILON)
+    input = tf.nn.leaky_relu(input, alpha=LEAKY_RELU, name='ac')
+    
+    return input
+
 def res_block(input, filters):
     # General residual block
     shortcut = input
@@ -65,22 +128,6 @@ def bottle_neck_res_block(input, filters):
     input = CBR(input, filters, 1)
 
     return input + shortcut
-
-def channel_attention_block(input):
-    """
-    Attention block,the implementation of the channel attention mechanism.
-    What's more,the operations in this function will be in the channel variable scope.
-    Args:
-        input:tensor that will be operated.
-    Return:
-        input:input * channel weight.
-    """
-    with tf.variable_scope("channel"):
-        norm = tf.random_uniform([input.get_shape().as_list()[-1]])
-        va1 = tf.Variable(norm)
-        input = input*va1
-
-        return input
 
 def upsampling(input, filters, kernel_size=3, strides=2):
     """
@@ -137,5 +184,5 @@ if __name__ == "__main__":
     input_1 = tf.placeholder(tf.float32,[None, None, None, 1])
     input_2 = tf.placeholder(tf.float32,[None, 224, 384, 1])
     input_3 = tf.placeholder(tf.float32,[None, 224, 384, 1])
-    print(CBR(input_1, 64, kernel_size=1))
+    print(channel_attention_block(input_1))
     # input = r2Unet(input_1, 6)

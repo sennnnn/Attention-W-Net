@@ -8,20 +8,7 @@ class arg_parser(object):
     key_list = []
     map_dict = \
     {
-        '--model': \
-            {
-                'input_fuse': 'unet-input-fuse', 
-                'middle_fuse': 'unet-middle-fuse', 
-                'output_fuse': 'unet-output-fuse', 
-                'single': 'unet',
-                'r2u': 'r2Unet',
-                'att': 'attentionUnet'
-            },
-        '--pattern': \
-            {
-                'ckpt': 'ckpt',
-                'pb': 'pb'
-            }
+
     }
     special_key_list = []
     def __init__(self):
@@ -95,38 +82,38 @@ def args_process():
 
     a.add_val('--task', 'train')
 
-    a.add_val('--sequence', 'default')
-
-    model_dict = {'input_fuse':'unet-input-fuse', 'middle_fuse':'unet-middle-fuse', \
-                  'output_fuse':'unet-output-fuse', 'single':'unet', 'r2u':'r2Unet', 'att':'attentionUnet'}
+    model_dict = {'unet':'unet', 'r2u':'r2Unet', 'att':'attentionUnet', 'hyb':'hybridUnet'}
 
     model_pattern_dict = {'ckpt':'ckpt', 'pb':'pb'}
 
+    target_dict = {'HN_OAR': 'HaN_OAR', 'Lu_OAR': 'Thoracic_OAR', 'HN_GTV': 'Naso_GTV', 'Lu_GTV': 'Lung_GTV'}
+
     a.add_map('--model', model_dict)
     a.add_map('--pattern', model_pattern_dict)
+    a.add_map('--target', target_dict)
 
     parse_dict = a()
 
     training_metric_loss_only_log_path = os.path.join('build/{}-{}'.format(parse_dict['--model'], \
-                                         parse_dict['--sequence']), 'valid_metric_loss_only.log')
+                                         parse_dict['--target']), 'valid_metric_loss_only.log')
     start_epoch = 1
     if(not os.path.exists(training_metric_loss_only_log_path)):
         last = False
     else:
-        # try:
-        temp_dict = dict_load(training_metric_loss_only_log_path)
-        start_epoch = len(temp_dict['epochwise']['metric']) + 1
-        if(start_epoch == 0):
+        try:
+            temp_dict = dict_load(training_metric_loss_only_log_path)
+            start_epoch = len(temp_dict['epochwise']['metric']) + 1
+            if(start_epoch == 0):
+                last = False
+            else:
+                last = True
+        except:
             last = False
-        else:
-            last = True
-        # except:
-        #     last = False
 
     ret_dict['task'] = parse_dict['--task']
     ret_dict['model'] = parse_dict['--model']
     ret_dict['model_pattern'] = parse_dict['--pattern'] if('--pattern' in parse_dict.keys()) else None
-    ret_dict['sequence'] = parse_dict['--sequence']
+    ret_dict['target'] = parse_dict['--target']
     ret_dict['last'] = last
     ret_dict['start_epoch'] = start_epoch
 

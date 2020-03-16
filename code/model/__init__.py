@@ -1,1 +1,1 @@
-__all__ = ['AttentionUnet', 'FUnet', 'R2Unet', 'Unet', 'Unet_SE']
+__all__ = ['AttentionUnet', 'R2Unet', 'Unet', 'Unet_SE', 'HybridUnet']

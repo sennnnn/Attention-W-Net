@@ -14,13 +14,24 @@ session = tf.InteractiveSession(config=config)
 
 ret_dict = args_process()
 
+input_shape_dict = {'HaN_OAR': (224, 224), 'Thoracic_OAR': (256, 256), 'Naso_GTV': (224, 224), 'Lung_GTV': (256, 256)}
+crop_range_dict = {'HaN_OAR': {'x': (160, 384), 'y': (160, 384)},
+                   'Thoracic_OAR': {'x': (117, 417), 'y': (99, 399)},
+                   'Lung_GTV': {'x': (117, 417), 'y': (99, 399)},
+                   'Naso_GTV': {'x': (160, 384), 'y': (160, 384)}}
+num_class_dict = {'HaN_OAR': 23, 'Thoracic_OAR': 7, 'Lung_GTV': 2, 'Naso_GTV': 2}
+
 if(ret_dict['task'] == 'train'):
+
+    # target selection
+    target = ret_dict['target']
+
     # rarely changing options
-    input_shape = (224, 384)
-    crop_x_range = (152, 600)
-    crop_y_range = (0, 768)
-    resize_shape = (768, 768)
-    num_class = 6
+    input_shape = input_shape_dict[target]
+    crop_x_range = crop_range_dict[target]['x']
+    crop_y_range = crop_range_dict[target]['y']
+    resize_shape = (512, 512)
+    num_class = num_class_dict[target]
     initial_channel = 32
     max_epoches = 200
 
@@ -30,29 +41,30 @@ if(ret_dict['task'] == 'train'):
     pattern = ret_dict['model_pattern']
     model_key = ret_dict['model']
     batch_size = 4
-    learning_rate = 0.00005
+    learning_rate = 0.0001
     keep_prob = 0.1
-    sequence = ret_dict['sequence']
 
-    frozen_model_path = "build/{}-{}/frozen_model".format(model_key, sequence)
-    ckpt_path = "build/{}-{}/ckpt".format(model_key, sequence)
+    frozen_model_path = "build/{}-{}/frozen_model".format(model_key, target)
+    ckpt_path = "build/{}-{}/ckpt".format(model_key, target)
 
-    train_path_list,valid_path_list = read_train_valid_data("dataset/train_dataset.txt", valid_rate=0.3, ifrandom=True)
+    train_path_list,valid_path_list = read_train_valid_data("dataset/{}_train_dataset.txt".format(target), valid_rate=0.3, ifrandom=True)
 
     # input_shape is the shape of numpy array, but it isn't same as the opencv.
     # In fact, the numpy array will be input_shape[::-1], (384, 224)
     # I hate opencv.
     train_batch_generator = train_valid_generator(train_path_list, len(train_path_list), True, batch_size, num_class,\
                                             input_shape, resize_shape, crop_x_range, crop_y_range, True, True, 15)
+
     valid_batch_generator = train_valid_generator(valid_path_list, len(valid_path_list), True, batch_size, num_class, \
                                             input_shape, resize_shape, crop_x_range, crop_y_range, False, False, 0)
 
     # load graph or init graph
     train_object = train_all(last, pattern, model_key, frozen_model_path, ckpt_path, \
-                             num_class, initial_channel, sequence)
+                             num_class, initial_channel, target)
 
-    train_object.training(learning_rate, max_epoches, len(train_path_list)//batch_size, \
-                        start_epoch, train_batch_generator, valid_batch_generator, 3, 5, keep_prob, config)
+    train_object.training(learning_rate, max_epoches, 20, \
+                          start_epoch, train_batch_generator, valid_batch_generator, 3, 5, keep_prob, config)
+
 elif(ret_dict['task'] == 'test'):
     # rarely changing options
     input_shape = (224, 384)

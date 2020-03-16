@@ -1,6 +1,27 @@
 
 from .model_base import *
 
+def channel_attention_block(input):
+    """
+    SE block implementation.
+    What's more,the operations in this function will be in the channel variable scope.
+    Args:
+        input:tensor that will be operated.
+    Return:
+        input:input * channel weight.
+    """
+    c = input.get_shape().as_list()[-1]
+    weight = tf.reduce_mean(input, [1, 2])
+    weight = layers.flatten(weight)
+    weight = layers.dense(weight, c//2)
+    weight = tf.nn.leaky_relu(weight, alpha=LEAKY_RELU, name='ac')
+    weight = layers.dense(weight, c)
+    weight = tf.nn.leaky_relu(weight, alpha=LEAKY_RELU, name='ac')
+    input = input*weight
+    input = layers.batch_normalization(input, momentum=DECAY_BATCH_NORM, epsilon=EPSILON)
+    
+    return input
+
 def encoder_unet_SE(input, initial_channel=64, encoder_time=4):
         # the encoder part of the unet architecture.
 ## Encoder ##
@@ -48,10 +69,10 @@ def unet_output_layer(input, num_class):
 
     return out
 
-def unet_SE(inputs, num_class, keep_prob=0.1, initial_channel=64, ifout=True, encoder_decoder_time=4):
+def unet_SE(input, num_class, keep_prob=0.1, initial_channel=64, ifout=True, encoder_decoder_time=4):
     # Attention mechanism block will be useful to face multiple segementation object.
 ## encoder ##
-    fuse_list = encoder_unet_SE(inputs[0], initial_channel, encoder_decoder_time)
+    fuse_list = encoder_unet_SE(input, initial_channel, encoder_decoder_time)
 ## ##
 
     input = middle_deliver_layer_unet_SE(fuse_list[-1], keep_prob, initial_channel, encoder_decoder_time)

@@ -18,7 +18,7 @@ def rr_block(input, filters, t):
 
 def r2Unet(input, num_class, keep_prob=0.1, initial_channel=64, t=2):
     c = initial_channel
-    input = input[0]
+
     input = rr_block(input, c, t)
     fus1 = input
     input = CBR(input, c, strides=2)

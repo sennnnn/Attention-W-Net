@@ -87,33 +87,24 @@ class train_valid_generator(object):
         temp = self.path_list
         if(self.ifrandom):
             random.shuffle(temp)
-        flag = 0
-        batch_T1 = ([], [])
-        batch_T1D = ([], [])
-        batch_T2 = ([], [])
+        
+        count = 0
+        
+        batch = ([], [])
 
         for one_record in temp:
-            flag += 1
-            T1_T1D_T2 = np.load(one_record)
+            count += 1
+            data_label_block = np.load(one_record)
             
-            T1 = T1_T1D_T2['T1']
-            T1D = T1_T1D_T2['T1D']
-            T2 = T1_T1D_T2['T2']
-            
-            T1 = self.process(T1)
-            T1D = self.process(T1D)
-            T2 = self.process(T2)
+            data_label_block = self.process(data_label_block)
 
-            batch_T1[0].append(T1[0]);batch_T1[1].append(T1[1])
-            batch_T1D[0].append(T1D[0]);batch_T1D[1].append(T1D[1])
-            batch_T2[0].append(T2[0]);batch_T2[1].append(T2[1])
+            batch[0].append(data_label_block[0]);batch[1].append(data_label_block[1])
             
-            if(flag == self.batch_size):
-                flag = 0
-                yield batch_T1,batch_T1D,batch_T2
-                batch_T1 = ([],[])
-                batch_T1D = ([],[])
-                batch_T2 = ([],[])
+            if(count == self.batch_size):
+                count = 0
+                yield batch
+                batch[0].clear()
+                batch[1].clear()
     
     def process(self, sequence_block):
         i,j = sequence_block[0],sequence_block[1]

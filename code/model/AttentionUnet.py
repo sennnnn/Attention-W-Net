@@ -13,7 +13,7 @@ def AttentionBlock(input_g, input_l, f_in):
 
 def AttentionUnet(input, num_class, keep_prob=0.1, initial_channel=64):
     c = initial_channel
-    input = input[0]
+
     input = CBR(input, c)
     input = CBR(input, c)
     fuse1 = input
@@ -33,7 +33,20 @@ def AttentionUnet(input, num_class, keep_prob=0.1, initial_channel=64):
 
     c = c*2
     input = CBR(input, c)
+    input = CBR(input, c)
+    fuse4 = input
+    input = CBR(input, c, strides=2)
+
+    c = c*2
+    input = CBR(input, c)
     input = tf.nn.dropout(input, keep_prob)
+    input = CBR(input, c)
+    input = upsampling(input, c)
+
+    c = c//2
+    fuse4 = AttentionBlock(input, fuse4, c//2)
+    input = tf.concat([fuse4, input], axis=-1)
+    input = CBR(input, c)
     input = CBR(input, c)
     input = upsampling(input, c)
 
@@ -56,7 +69,7 @@ def AttentionUnet(input, num_class, keep_prob=0.1, initial_channel=64):
     input = tf.concat([fuse1, input], axis=-1)
     input = CBR(input, c)
     input = CBR(input, c)
-    
+
     input = CBR(input, num_class, kernel_size=1)
 
     return input

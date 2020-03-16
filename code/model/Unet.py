@@ -45,11 +45,11 @@ def unet_output_layer(input, num_class):
 
     return out
 
-def unet(inputs, num_class, keep_prob=0.1, initial_channel=64, ifout=True, encoder_decoder_time=4):
+def unet(input, num_class, keep_prob=0.1, initial_channel=64, ifout=True, encoder_decoder_time=4):
     # Baseline Unet constructure.
 ## Encoder ##
     bc = initial_channel
-    fuse_list = encoder_unet(inputs[0], initial_channel, encoder_decoder_time)
+    fuse_list = encoder_unet(input, initial_channel, encoder_decoder_time)
 ## ##
 
     input = middle_deliver_layer_unet(fuse_list[-1], keep_prob, initial_channel, encoder_decoder_time)
