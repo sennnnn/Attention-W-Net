@@ -108,6 +108,8 @@ class train_valid_generator(object):
     
     def process(self, sequence_block):
         i,j = sequence_block[0],sequence_block[1]
+        i = i.astype(np.float32)
+        j = j.astype(np.uint8)
         i = length_norm_crop(i, self.resize_shape, self.crop_x_range, self.crop_y_range)
         j = length_norm_crop(j, self.resize_shape, self.crop_x_range, self.crop_y_range)
         i = cv2.resize(i, (self.input_shape))
@@ -124,7 +126,7 @@ class train_valid_generator(object):
 
 class test_generator(object):
     def __init__(self, path_list, batch_size, num_class, input_shape, resize_shape,\
-                 crop_x_range, crop_y_range, tran=False, flip=False, angle=0):
+                 crop_x_range, crop_y_range):
         self.path_list = path_list
         self.batch_size = batch_size
         self.num_class = num_class
@@ -132,9 +134,6 @@ class test_generator(object):
         self.resize_shape = resize_shape
         self.crop_x_range = crop_x_range
         self.crop_y_range = crop_y_range
-        self.tran = tran
-        self.flip = flip
-        self.angle = angle
 
     def _path_resolve(self):
         self.test_data = {}
@@ -158,69 +157,58 @@ class test_generator(object):
                 patient_name = line.split(':')[1]
                 patient_name = patient_name.replace(']', '')
                 self.test_data[patient_name] = {}
-                self.test_data[patient_name]['npz_paths'] = []
+                self.test_data[patient_name]['npzy_paths'] = []
                 count_next_flag = True
                 continue
 
-            self.test_data[patient_name]['npz_paths'].append(line)
+            self.test_data[patient_name]['npzy_paths'].append(line)
     
     def process(self, sequence_block):
         i,j = sequence_block[0],sequence_block[1]
+        i = i.astype(np.float32)
+        j = j.astype(np.uint8)
         i = length_norm_crop(i, self.resize_shape, self.crop_x_range, self.crop_y_range)
+        i,j = _preprocess_oneslice((i, j), False, False, 0)
         i = cv2.resize(i, (self.input_shape))
-        i,j = _preprocess_oneslice((i, j), self.tran, self.flip, self.angle)
         i = np.expand_dims(i, axis=-1)
         j = one_hot(j, self.num_class)
 
         return i,j
 
     def __iter__(self, patient_name):
-        npz_list = self.test_data[patient_name]['npz_paths']
+        npz_list = self.test_data[patient_name]['npzy_paths']
         flag = 0
-        batch_T1 = ([], [])
-        batch_T1D = ([], [])
-        batch_T2 = ([], [])
+        batch = ([], [])
 
         for one_record in npz_list:
             flag += 1
-            T1_T1D_T2 = np.load(one_record)
-            
-            T1 = T1_T1D_T2['T1']
-            T1D = T1_T1D_T2['T1D']
-            T2 = T1_T1D_T2['T2']
-            
-            T1 = self.process(T1)
-            T1D = self.process(T1D)
-            T2 = self.process(T2)
+            data_label_block = np.load(one_record)
+            data_label_block = self.process(data_label_block)
 
-            batch_T1[0].append(T1[0]);batch_T1[1].append(T1[1])
-            batch_T1D[0].append(T1D[0]);batch_T1D[1].append(T1D[1])
-            batch_T2[0].append(T2[0]);batch_T2[1].append(T2[1])
+            batch[0].append(data_label_block[0]);batch[1].append(data_label_block[1])
             
             if(flag == self.batch_size):
                 flag = 0
-                yield batch_T1,batch_T1D,batch_T2
-                batch_T1 = ([],[])
-                batch_T1D = ([],[])
-                batch_T2 = ([],[])
+                yield batch
+                batch[0].clear();batch[1].clear()
 
         if(flag != 0):
-            yield batch_T1,batch_T1D,batch_T2
+            yield batch
 
     def patientwise_iter(self):
         self._path_resolve()
         iter_list = []
         for patient_name in self.test_data.keys():
-            yield (patient_name,self.test_data[patient_name]['nii_info'],self.__iter__(patient_name))
+            yield (patient_name, self.test_data[patient_name]['nii_info'], self.__iter__(patient_name))
 
-def recover(patient_mask_predict, shape, ifprocess, num_class, crop_x_range, crop_y_range):
+def recover(patient_mask_predict, shape, ifprocess, num_class, crop_x_range, crop_y_range, resize_shape):
     length = len(patient_mask_predict)
     w = crop_x_range[1]-crop_x_range[0]
     h = crop_y_range[1]-crop_y_range[0]
     out = np.array([cv2.resize(x.astype(np.uint8), (h, w)) for x in patient_mask_predict], dtype=np.uint8)
     temp = np.zeros(shape=shape, dtype=np.uint8)
     for i in range(length):
-        temp_slice = np.zeros(shape=(768, 768), dtype=np.uint8)
+        temp_slice = np.zeros(shape=resize_shape, dtype=np.uint8)
         temp_slice[np.ix_(range(*crop_x_range), range(*crop_y_range))] = out[i]
         temp[i] = cv2.resize(temp_slice, tuple(temp[i].shape))
     # After postprocessing...

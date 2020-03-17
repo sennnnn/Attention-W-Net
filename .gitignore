@@ -2,7 +2,7 @@
 
 # file
 try.py
-*.zip
+*.zip*
 
 # folder
 __pycache__/
@@ -11,6 +11,7 @@ ckpt/
 .vscode/
 build/
 old/
+backup/
 
 # local
 

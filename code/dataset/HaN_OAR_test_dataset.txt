@@ -1,6 +1,6 @@
 [patient:1]
 slice_number:112
-.\test\HaN_OAR\1\nii_meta_info.txt
+dataset\.\test\HaN_OAR\1\nii_meta_info.txt
 dataset\.\test\HaN_OAR\1\0.npy
 dataset\.\test\HaN_OAR\1\1.npy
 dataset\.\test\HaN_OAR\1\2.npy
@@ -116,7 +116,7 @@ dataset\.\test\HaN_OAR\1\111.npy
 
 [patient:10]
 slice_number:127
-.\test\HaN_OAR\10\nii_meta_info.txt
+dataset\.\test\HaN_OAR\10\nii_meta_info.txt
 dataset\.\test\HaN_OAR\10\0.npy
 dataset\.\test\HaN_OAR\10\1.npy
 dataset\.\test\HaN_OAR\10\2.npy
@@ -247,7 +247,7 @@ dataset\.\test\HaN_OAR\10\126.npy
 
 [patient:2]
 slice_number:123
-.\test\HaN_OAR\2\nii_meta_info.txt
+dataset\.\test\HaN_OAR\2\nii_meta_info.txt
 dataset\.\test\HaN_OAR\2\0.npy
 dataset\.\test\HaN_OAR\2\1.npy
 dataset\.\test\HaN_OAR\2\2.npy
@@ -374,7 +374,7 @@ dataset\.\test\HaN_OAR\2\122.npy
 
 [patient:3]
 slice_number:129
-.\test\HaN_OAR\3\nii_meta_info.txt
+dataset\.\test\HaN_OAR\3\nii_meta_info.txt
 dataset\.\test\HaN_OAR\3\0.npy
 dataset\.\test\HaN_OAR\3\1.npy
 dataset\.\test\HaN_OAR\3\2.npy
@@ -507,7 +507,7 @@ dataset\.\test\HaN_OAR\3\128.npy
 
 [patient:4]
 slice_number:121
-.\test\HaN_OAR\4\nii_meta_info.txt
+dataset\.\test\HaN_OAR\4\nii_meta_info.txt
 dataset\.\test\HaN_OAR\4\0.npy
 dataset\.\test\HaN_OAR\4\1.npy
 dataset\.\test\HaN_OAR\4\2.npy
@@ -632,7 +632,7 @@ dataset\.\test\HaN_OAR\4\120.npy
 
 [patient:5]
 slice_number:123
-.\test\HaN_OAR\5\nii_meta_info.txt
+dataset\.\test\HaN_OAR\5\nii_meta_info.txt
 dataset\.\test\HaN_OAR\5\0.npy
 dataset\.\test\HaN_OAR\5\1.npy
 dataset\.\test\HaN_OAR\5\2.npy
@@ -759,7 +759,7 @@ dataset\.\test\HaN_OAR\5\122.npy
 
 [patient:6]
 slice_number:118
-.\test\HaN_OAR\6\nii_meta_info.txt
+dataset\.\test\HaN_OAR\6\nii_meta_info.txt
 dataset\.\test\HaN_OAR\6\0.npy
 dataset\.\test\HaN_OAR\6\1.npy
 dataset\.\test\HaN_OAR\6\2.npy
@@ -881,7 +881,7 @@ dataset\.\test\HaN_OAR\6\117.npy
 
 [patient:7]
 slice_number:115
-.\test\HaN_OAR\7\nii_meta_info.txt
+dataset\.\test\HaN_OAR\7\nii_meta_info.txt
 dataset\.\test\HaN_OAR\7\0.npy
 dataset\.\test\HaN_OAR\7\1.npy
 dataset\.\test\HaN_OAR\7\2.npy
@@ -1000,7 +1000,7 @@ dataset\.\test\HaN_OAR\7\114.npy
 
 [patient:8]
 slice_number:113
-.\test\HaN_OAR\8\nii_meta_info.txt
+dataset\.\test\HaN_OAR\8\nii_meta_info.txt
 dataset\.\test\HaN_OAR\8\0.npy
 dataset\.\test\HaN_OAR\8\1.npy
 dataset\.\test\HaN_OAR\8\2.npy
@@ -1117,7 +1117,7 @@ dataset\.\test\HaN_OAR\8\112.npy
 
 [patient:9]
 slice_number:124
-.\test\HaN_OAR\9\nii_meta_info.txt
+dataset\.\test\HaN_OAR\9\nii_meta_info.txt
 dataset\.\test\HaN_OAR\9\0.npy
 dataset\.\test\HaN_OAR\9\1.npy
 dataset\.\test\HaN_OAR\9\2.npy

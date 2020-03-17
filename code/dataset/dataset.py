@@ -86,7 +86,7 @@ def test_dataset_txt_generate(target):
         npzy_list = [x for x in npzy_list if(os.path.splitext(x)[1] != '.txt')]
         npzy_list = sorted(npzy_list, key=lambda x: int(os.path.splitext(x)[0]))
         npzy_list_length = len(npzy_list)
-        patient_nii_meta_info_path = os.path.join(patient_path, 'nii_meta_info.txt')
+        patient_nii_meta_info_path = os.path.join('dataset', patient_path, 'nii_meta_info.txt')
         f.write('[patient:{}]\nslice_number:{}\n{}\n'.format(patient, npzy_list_length, \
                 patient_nii_meta_info_path))
         for npzy in npzy_list:

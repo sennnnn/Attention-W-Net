@@ -1,6 +1,6 @@
 [patient:1]
 slice_number:112
-.\test\Thoracic_OAR\1\nii_meta_info.txt
+dataset\.\test\Thoracic_OAR\1\nii_meta_info.txt
 dataset\.\test\Thoracic_OAR\1\0.npy
 dataset\.\test\Thoracic_OAR\1\1.npy
 dataset\.\test\Thoracic_OAR\1\2.npy
@@ -116,7 +116,7 @@ dataset\.\test\Thoracic_OAR\1\111.npy
 
 [patient:10]
 slice_number:94
-.\test\Thoracic_OAR\10\nii_meta_info.txt
+dataset\.\test\Thoracic_OAR\10\nii_meta_info.txt
 dataset\.\test\Thoracic_OAR\10\0.npy
 dataset\.\test\Thoracic_OAR\10\1.npy
 dataset\.\test\Thoracic_OAR\10\2.npy
@@ -214,7 +214,7 @@ dataset\.\test\Thoracic_OAR\10\93.npy
 
 [patient:2]
 slice_number:97
-.\test\Thoracic_OAR\2\nii_meta_info.txt
+dataset\.\test\Thoracic_OAR\2\nii_meta_info.txt
 dataset\.\test\Thoracic_OAR\2\0.npy
 dataset\.\test\Thoracic_OAR\2\1.npy
 dataset\.\test\Thoracic_OAR\2\2.npy
@@ -315,7 +315,7 @@ dataset\.\test\Thoracic_OAR\2\96.npy
 
 [patient:3]
 slice_number:106
-.\test\Thoracic_OAR\3\nii_meta_info.txt
+dataset\.\test\Thoracic_OAR\3\nii_meta_info.txt
 dataset\.\test\Thoracic_OAR\3\0.npy
 dataset\.\test\Thoracic_OAR\3\1.npy
 dataset\.\test\Thoracic_OAR\3\2.npy
@@ -425,7 +425,7 @@ dataset\.\test\Thoracic_OAR\3\105.npy
 
 [patient:4]
 slice_number:99
-.\test\Thoracic_OAR\4\nii_meta_info.txt
+dataset\.\test\Thoracic_OAR\4\nii_meta_info.txt
 dataset\.\test\Thoracic_OAR\4\0.npy
 dataset\.\test\Thoracic_OAR\4\1.npy
 dataset\.\test\Thoracic_OAR\4\2.npy
@@ -528,7 +528,7 @@ dataset\.\test\Thoracic_OAR\4\98.npy
 
 [patient:5]
 slice_number:93
-.\test\Thoracic_OAR\5\nii_meta_info.txt
+dataset\.\test\Thoracic_OAR\5\nii_meta_info.txt
 dataset\.\test\Thoracic_OAR\5\0.npy
 dataset\.\test\Thoracic_OAR\5\1.npy
 dataset\.\test\Thoracic_OAR\5\2.npy
@@ -625,7 +625,7 @@ dataset\.\test\Thoracic_OAR\5\92.npy
 
 [patient:6]
 slice_number:117
-.\test\Thoracic_OAR\6\nii_meta_info.txt
+dataset\.\test\Thoracic_OAR\6\nii_meta_info.txt
 dataset\.\test\Thoracic_OAR\6\0.npy
 dataset\.\test\Thoracic_OAR\6\1.npy
 dataset\.\test\Thoracic_OAR\6\2.npy
@@ -746,7 +746,7 @@ dataset\.\test\Thoracic_OAR\6\116.npy
 
 [patient:7]
 slice_number:99
-.\test\Thoracic_OAR\7\nii_meta_info.txt
+dataset\.\test\Thoracic_OAR\7\nii_meta_info.txt
 dataset\.\test\Thoracic_OAR\7\0.npy
 dataset\.\test\Thoracic_OAR\7\1.npy
 dataset\.\test\Thoracic_OAR\7\2.npy
@@ -849,7 +849,7 @@ dataset\.\test\Thoracic_OAR\7\98.npy
 
 [patient:8]
 slice_number:88
-.\test\Thoracic_OAR\8\nii_meta_info.txt
+dataset\.\test\Thoracic_OAR\8\nii_meta_info.txt
 dataset\.\test\Thoracic_OAR\8\0.npy
 dataset\.\test\Thoracic_OAR\8\1.npy
 dataset\.\test\Thoracic_OAR\8\2.npy
@@ -941,7 +941,7 @@ dataset\.\test\Thoracic_OAR\8\87.npy
 
 [patient:9]
 slice_number:101
-.\test\Thoracic_OAR\9\nii_meta_info.txt
+dataset\.\test\Thoracic_OAR\9\nii_meta_info.txt
 dataset\.\test\Thoracic_OAR\9\0.npy
 dataset\.\test\Thoracic_OAR\9\1.npy
 dataset\.\test\Thoracic_OAR\9\2.npy
