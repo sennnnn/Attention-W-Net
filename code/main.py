@@ -40,7 +40,7 @@ if(ret_dict['task'] == 'train'):
     start_epoch = ret_dict['start_epoch']
     pattern = ret_dict['model_pattern']
     model_key = ret_dict['model']
-    batch_size = 4
+    batch_size = 3
     learning_rate = 0.0001
     keep_prob = 0.1
 
@@ -62,7 +62,7 @@ if(ret_dict['task'] == 'train'):
     train_object = train_all(last, pattern, model_key, frozen_model_path, ckpt_path, \
                              num_class, initial_channel, target)
 
-    train_object.training(learning_rate, max_epoches, len(train_path_list)//batch_size, \
+    train_object.training(learning_rate, max_epoches, 20, \
                           start_epoch, train_batch_generator, valid_batch_generator, 3, 5, keep_prob, config)
 
 elif(ret_dict['task'] == 'test'):
