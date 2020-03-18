@@ -18,7 +18,8 @@ class train_all(object):
         'r2Unet':R2Unet.r2Unet,
         'attentionUnet':AttentionUnet.AttentionUnet,
         'hybridUnet':HybridUnet.hybridAttentionUnet,
-        'unetPlusPlus':Unetplusplus.Unetplusplus
+        'unetPlusPlus':Unetplusplus.Unetplusplus,
+        'CEnet':CEnet.CEnet
     }
     def __init__(self, last, pattern, model_key, pb_path, ckpt_path, num_class, initial_channel, target):
         self.graph = tf.Graph()

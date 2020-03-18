@@ -40,7 +40,7 @@ if(ret_dict['task'] == 'train'):
     start_epoch = ret_dict['start_epoch']
     pattern = ret_dict['model_pattern']
     model_key = ret_dict['model']
-    batch_size = 3
+    batch_size = 4
     learning_rate = 0.0001
     keep_prob = 0.1
 

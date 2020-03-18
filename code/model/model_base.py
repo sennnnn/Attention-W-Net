@@ -6,18 +6,19 @@ DECAY_BATCH_NORM = 0.9
 EPSILON = 1E-05
 LEAKY_RELU = 0.1
 
-def AC(input, filters, rate):
+def AC(input, filters, rate, kernel_size=3):
     """
     atrous convolution
     Args:
         input:tensor that will be operated.
         filters:convolutional kernel channel size.
         rate:the convolution kernel expandation rate.
+        kernel_size:convolutional kernel size.
     Return:
         input:tensor that has been operated.
     """
     c = input.get_shape().as_list()[-1]
-    filters_variable = tf.Variable(tf.truncated_normal([3, 3, c, filters], dtype=tf.float32))
+    filters_variable = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, c, filters], dtype=tf.float32))
     input = tf.nn.atrous_conv2d(input, filters_variable, rate, padding='SAME')
 
     return input
@@ -38,17 +39,18 @@ def C(input, filters, strides=1, kernel_size=3):
 
     return input
 
-def ACB(input, filters, rate):
+def ACB(input, filters, rate, kernel_size=3):
     """
     atrous convolution + batch normalization
     Args:
         input:tensor that will be operated.
         filters:convolutional kernel channel size.
         rate:the convolution kernel expandation rate.
+        kernel_size:convolutional kernel size.
     Return:
         input:tensor that has been operated.
     """
-    input = AC(input, filters, rate)
+    input = AC(input, filters, rate, kernel_size)
     input = layers.batch_normalization(input, momentum=DECAY_BATCH_NORM, epsilon=EPSILON)
 
     return input
@@ -88,17 +90,18 @@ def CBR(input, filters, strides=1, kernel_size=3):
     
     return input
 
-def ACBR(input, filters, rate):
+def ACBR(input, filters, rate, kernel_size=3):
     """
     atrous convolution + batch normalization
     Args:
         input:tensor that will be operated.
         filters:convolutional kernel channel size.
         rate:the convolution kernel expandation rate.
+        kernel_size:convolutional kernel size.
     Return:
         input:tensor that has been operated.
     """
-    input = AC(input, filters, rate)
+    input = AC(input, filters, rate, kernel_size)
     input = layers.batch_normalization(input, momentum=DECAY_BATCH_NORM, epsilon=EPSILON)
     input = tf.nn.leaky_relu(input, alpha=LEAKY_RELU, name='ac')
     
