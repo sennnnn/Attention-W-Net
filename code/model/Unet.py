@@ -45,7 +45,7 @@ def unet_output_layer(input, num_class):
 
     return out
 
-def unet(input, num_class, keep_prob=0.1, initial_channel=64, ifout=True, encoder_decoder_time=4):
+def Unet(input, num_class, keep_prob=0.1, initial_channel=64, ifout=True, encoder_decoder_time=4):
     # Baseline Unet constructure.
 ## Encoder ##
     bc = initial_channel

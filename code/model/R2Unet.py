@@ -16,7 +16,7 @@ def rr_block(input, filters, t):
 
     return input
 
-def r2Unet(input, num_class, keep_prob=0.1, initial_channel=64, t=2):
+def R2Unet(input, num_class, keep_prob=0.1, initial_channel=64, t=2):
     c = initial_channel
 
     input = rr_block(input, c, t)

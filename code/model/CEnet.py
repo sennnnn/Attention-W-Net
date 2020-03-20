@@ -60,27 +60,27 @@ def CEnet(input, num_class, keep_prob=0.1, initial_channel=64):
     input = DAC(input)
     input = tf.nn.dropout(input, keep_prob)
     input = RMC(input)
-    input = upsampling(input, c)
 
     c = c//2
+    input = upsampling(input, c)
     input = tf.concat([fuse4, input], axis=-1)
     input = CBR(input, c)
     input = CBR(input, c)
-    input = upsampling(input, c)
 
     c = c//2
+    input = upsampling(input, c)
     input = tf.concat([fuse3, input], axis=-1)
     input = CBR(input, c)
     input = CBR(input, c)
-    input = upsampling(input, c)
 
     c = c//2
+    input = upsampling(input, c)
     input = tf.concat([fuse2, input], axis=-1)
     input = CBR(input, c)
     input = CBR(input, c)
-    input = upsampling(input, c)
 
     c = c//2
+    input = upsampling(input, c)
     input = tf.concat([fuse1, input], axis=-1)
     input = CBR(input, c)
     input = CBR(input, c)

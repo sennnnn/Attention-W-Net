@@ -74,7 +74,7 @@ def hybridAttentionBlock(input):
 
     return out
 
-def hybridAttentionUnet(input, num_class, keep_prob=0.5, initial_channel=64):
+def HybridAttentionUnet(input, num_class, keep_prob=0.5, initial_channel=64):
     """
     absorb many merits
     Args:

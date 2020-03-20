@@ -13,13 +13,15 @@ from util import iflarger,ifsmaller,get_newest,dict_save,dict_load
 class train_all(object):
     model_dict = \
     {
-        'unet' : Unet.unet,
-        'unet-CAB' : Unet_SE.unet_SE,
-        'r2Unet':R2Unet.r2Unet,
-        'attentionUnet':AttentionUnet.AttentionUnet,
-        'hybridUnet':HybridUnet.hybridAttentionUnet,
-        'unetPlusPlus':Unetplusplus.Unetplusplus,
-        'CEnet':CEnet.CEnet
+        'Unet' : Unet.Unet,
+        'Unet-SE' : Unet_SE.Unet_SE,
+        'R2Unet':R2Unet.R2Unet,
+        'Attention-Unet':AttentionUnet.AttentionUnet,
+        'Hybrid-Unet':HybridUnet.HybridAttentionUnet,
+        'Unet++':Unetplusplus.Unetplusplus,
+        'CEnet':CEnet.CEnet,
+        'HighRes-Unet':HightResUnet.HightResUnet,
+        'Wnet':Wnet.Wnet
     }
     def __init__(self, last, pattern, model_key, pb_path, ckpt_path, num_class, initial_channel, target):
         self.graph = tf.Graph()

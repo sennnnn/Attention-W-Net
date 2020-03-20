@@ -50,7 +50,6 @@ if(ret_dict['task'] == 'train'):
     train_path_list,valid_path_list = read_train_valid_data("dataset/{}_train_dataset.txt".format(target), valid_rate=0.3, ifrandom=True)
 
     # input_shape is the shape of numpy array, but it isn't same as the opencv.
-    # In fact, the numpy array will be input_shape[::-1], (384, 224)
     # I hate opencv.
     train_batch_generator = train_valid_generator(train_path_list, len(train_path_list), True, batch_size, num_class,\
                                             input_shape, resize_shape, crop_x_range, crop_y_range, True, True, 15)
@@ -62,7 +61,7 @@ if(ret_dict['task'] == 'train'):
     train_object = train_all(last, pattern, model_key, frozen_model_path, ckpt_path, \
                              num_class, initial_channel, target)
 
-    train_object.training(learning_rate, max_epoches, 20, \
+    train_object.training(learning_rate, max_epoches, 5, \
                           start_epoch, train_batch_generator, valid_batch_generator, 3, 5, keep_prob, config)
 
 elif(ret_dict['task'] == 'test'):
