@@ -21,7 +21,8 @@ class train_all(object):
         'Unet++':Unetplusplus.Unetplusplus,
         'CEnet':CEnet.CEnet,
         'HighRes-Unet':HightResUnet.HightResUnet,
-        'Wnet':Wnet.Wnet
+        'Wnet':Wnet.Wnet,
+        'Wnet_raw':Wnet_raw.Wnet
     }
     def __init__(self, last, pattern, model_key, pb_path, ckpt_path, num_class, initial_channel, target):
         self.graph = tf.Graph()
