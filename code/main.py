@@ -1,8 +1,8 @@
 import os
 import tensorflow as tf
 
-from test import test_all
-from train import train_all
+from test import do
+from train import do
 from arg_parser import args_process
 from model.model_util import load_graph
 from process import train_valid_generator,test_generator

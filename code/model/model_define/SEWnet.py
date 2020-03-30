@@ -22,7 +22,7 @@ def channel_attention_block(input):
     
     return input
 
-def Wnet_onestage(input, num_class, initial_channel=64, keep_prob=0.1):
+def Wnet_onestage(input, num_class, keep_prob=0.1, initial_channel=64):
     
     c = initial_channel
     input = CBR(input, c)
@@ -93,11 +93,11 @@ def Wnet_onestage(input, num_class, initial_channel=64, keep_prob=0.1):
 
     return fuse5, fuse4, fuse3, fuse2, fuse1
 
-def Wnet_twostage(input, num_class, initial_channel=64, keep_prob=0.1):
+def two_stage(input, num_class, keep_prob=0.1, initial_channel=64):
 
     c = initial_channel
 
-    fuse5,fuse4,fuse3,fuse2,fuse1 = Wnet_onestage(input, num_class, c, keep_prob)
+    fuse5,fuse4,fuse3,fuse2,fuse1 = one_stage(input, num_class, keep_prob, c)
 
     input = tf.concat([fuse1, input], axis=-1)
     input = CBR(input, c)
@@ -169,9 +169,9 @@ def Wnet_twostage(input, num_class, initial_channel=64, keep_prob=0.1):
 
     return input
 
-def SE_Wnet(input, num_class, initial_channel=64, keep_prob=0.1):
+def net(input, num_class, keep_prob=0.1, initial_channel=64):
 
-    out = Wnet_twostage(input, num_class, initial_channel, keep_prob)
+    out = two_stage(input, num_class, keep_prob, initial_channel)
 
     return out
 

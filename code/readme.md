@@ -1,5 +1,3 @@
-# CSTRO 数据集使用
+# ICBIP paper repository
 
-该仓库为 ICBIP 投稿的实验仓库，原始结果为 CSTRO 比赛的方法。
-
-## 
+All of the networks are trained on 16-th Cstro conference H&N OAR segmentation competition dataset

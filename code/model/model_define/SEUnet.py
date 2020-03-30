@@ -69,7 +69,7 @@ def unet_output_layer(input, num_class):
 
     return out
 
-def Unet_SE(input, num_class, keep_prob=0.1, initial_channel=64, ifout=True, encoder_decoder_time=4):
+def net(input, num_class, keep_prob=0.1, initial_channel=64, ifout=True, encoder_decoder_time=4):
     # Attention mechanism block will be useful to face multiple segementation object.
 ## encoder ##
     fuse_list = encoder_unet_SE(input, initial_channel, encoder_decoder_time)

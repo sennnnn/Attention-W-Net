@@ -70,9 +70,3 @@ def frozen_graph(sess, output_graph_path):
         f.write(output_graph_def.SerializeToString())
 
     return "{} ops written to {}.\n".format(len(output_graph_def.node), output_graph_path)
-
-def write_graph_ops_name_and_shape(graph, txt_path):
-    ops = graph.get_operations()
-    f = open(txt_path, 'w')
-    [f.write('{} => {}'.format(x.name, str(x.outputs[0].get_shape())) + '\n') for x in ops]
-    f.close()

@@ -6,7 +6,7 @@ from util import average,saveAsNiiGz
 from process import recover
 from model.loss_metric import np_dice_index,np_dice_index_channel_wise
 
-class test_all(object):
+class do(object):
     def __init__(self, graph, model_key, pb_path, pb_name, num_class, target):
         self.graph = graph
         self.model_key = model_key

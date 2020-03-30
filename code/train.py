@@ -2,31 +2,14 @@ import os
 import time
 import numpy as np
 import tensorflow as tf
-import matplotlib.pyplot as plt
 
 from model import *
-from model.model_base import *
 from model.loss_metric import *
 from model.model_util import frozen_graph,restore_from_pb,load_graph
 from util import iflarger,ifsmaller,get_newest,dict_save,dict_load
 
-class train_all(object):
-    model_dict = \
-    {
-        'Unet' : Unet.Unet,
-        'Unet-SE' : Unet_SE.Unet_SE,
-        'R2Unet':R2Unet.R2Unet,
-        'Attention-Unet':AttentionUnet.AttentionUnet,
-        'Hybrid-Unet':HybridUnet.HybridAttentionUnet,
-        'Unet++':Unetplusplus.Unetplusplus,
-        'CEnet':CEnet.CEnet,
-        'HighRes-Unet':HightResUnet.HightResUnet,
-        'Wnet':Wnet.Wnet,
-        'Wnet_raw':Wnet_raw.Wnet,
-        'Attention-Unet-SE':AttentionUnet_SE.AttentionUnet_SE,
-        'Attention-Wnet':AttentionWnet.AttentionWnet,
-        'SE-Wnet':SE_Wnet.SE_Wnet
-    }
+class do(object):
+    model_dict = model_dict
     def __init__(self, last, pattern, model_key, pb_path, ckpt_path, num_class, initial_channel, target):
         self.graph = tf.Graph()
         self.last_flag = last

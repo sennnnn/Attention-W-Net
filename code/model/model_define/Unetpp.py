@@ -8,7 +8,7 @@ def meta_block(input, filters, keep_prob=None):
 
     return input
 
-def Unetplusplus(input, num_class, initial_channel=64, keep_prob=0.1):
+def net(input, num_class, keep_prob=0.1, initial_channel=64):
     """
     Unet++ network architecture.
     """

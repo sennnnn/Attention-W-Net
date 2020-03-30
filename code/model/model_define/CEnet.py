@@ -31,7 +31,7 @@ def RMC(input):
 
     return out
 
-def CEnet(input, num_class, keep_prob=0.1, initial_channel=64):
+def net(input, num_class, keep_prob=0.1, initial_channel=64):
     c = initial_channel
     input = CBR(input, c)
     input = CBR(input, c)
