@@ -64,3 +64,52 @@ def R2Unet(input, num_class, keep_prob=0.1, initial_channel=64, t=2):
     input = CBR(input, num_class, kernel_size=1)
 
     return input
+
+def R2Unet_true(input, num_class, keep_prob=0.1, initial_channel=64, t=2):
+    c = initial_channel
+
+    input = rr_block(input, c, t)
+    fus1 = input
+    input = CBR(input, c, strides=2)
+
+    c = c*2
+    input = rr_block(input, c, t)
+    fus2 = input
+    input = CBR(input, c, strides=2)
+
+    c = c*2
+    input = rr_block(input, c, t)
+    fus3 = input
+    input = CBR(input, c, strides=2)
+
+    c = c*2
+    input = rr_block(input, c, t)
+    fus4 = input
+    input = CBR(input, c, strides=2)
+
+    c = c*2
+    input = tf.nn.dropout(input, keep_prob)
+    input = rr_block(input, c, t)
+
+    c = c//2
+    input = upsampling(input, c)
+    input = tf.concat([fus4, input], axis=-1)
+    input = rr_block(input, c, t)
+
+    c = c//2
+    input = upsampling(input, c)
+    input = tf.concat([fus3, input], axis=-1)
+    input = rr_block(input, c, t)
+
+    c = c//2
+    input = upsampling(input, c)
+    input = tf.concat([fus2, input], axis=-1)
+    input = rr_block(input, c, t)
+
+    c = c//2
+    input = upsampling(input, c)
+    input = tf.concat([fus1, input], axis=-1)
+    input = rr_block(input, c, t)
+    input = CBR(input, num_class, kernel_size=1)
+
+    return input

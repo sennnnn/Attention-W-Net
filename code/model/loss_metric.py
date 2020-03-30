@@ -55,3 +55,59 @@ def channel_weighted_cross_entropy_loss(label, predict, weight):
     cross = -tf.reduce_sum(weight*label*tf.log(predict+3e-9),axis=-1)
 
     return cross
+
+def IOU(label, predict, smooth=0.0001):
+    p = predict[..., 1:]
+    l = label[..., 1:]
+    cross = p*l
+
+    p_area = np.sum(p)
+    l_area = np.sum(l)
+    cross_area = np.sum(cross)
+
+    return (cross_area + smooth)/(p_area + l_area - cross_area + smooth)
+
+def DSC(label, predict, smooth=0.0001):
+    p = predict[..., 1:]
+    l = label[..., 1:]
+    cross = p*l
+
+    p_area = np.sum(p)
+    l_area = np.sum(l)
+    cross_area = np.sum(cross)
+
+    return (2*cross_area + smooth)/(p_area + l_area + smooth)
+
+def Sensity(label, predict, smooth=0.0001):
+    p = predict[..., 1:]
+    l = label[..., 1:]
+    cross = p*l
+
+    all_area = np.sum(np.ones_like(l, dtype=np.uint8))
+    p_area = np.sum(p)
+    l_area = np.sum(l)
+    cross_area = np.sum(cross)
+
+    TP = cross_area
+    FN = all_area - p_area - l_area + cross_area
+
+    return (TP + smooth)/(TP + FN + smooth) 
+
+def Precision(label, predict, smooth=0.0001):
+    p = predict[..., 1:]
+    l = label[..., 1:]
+    cross = p*l
+
+    p_area = np.sum(p)
+    cross_area = np.sum(cross)
+
+    TP = cross_area
+    FP = p_area - cross_area
+
+    return (TP + smooth)/(TP + FP + smooth) if(p_area != 0) else 0
+
+def F1_score(label, predict, smooth=0.0001):
+    recall = Sensity(label, predict, smooth)
+    precision = Precision(label, predict, smooth)
+
+    return 2*(precision * recall + smooth)/(precision + recall + smooth)

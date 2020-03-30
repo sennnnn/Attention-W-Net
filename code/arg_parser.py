@@ -83,7 +83,8 @@ def args_process():
     a.add_val('--task', 'train')
 
     model_dict = {'unet':'Unet', 'unet_se':'Unet-SE', 'r2u':'R2Unet', 'att':'Attention-Unet', 'hyb':'HybridUnet', \
-                  'uplus':'Unet++', 'ce':'CEnet', 'highres':'HighRes-Unet', 'wnet':'Wnet', 'wnet_r':'Wnet_raw'}
+                  'uplus':'Unet++', 'ce':'CEnet', 'highres':'HighRes-Unet', 'wnet':'Wnet', 'wnet_r':'Wnet_raw', \
+                  'att_se':'Attention-Unet-SE', 'attwnet':'Attention-Wnet', 'wnet_se': 'SE-Wnet'}
 
     model_pattern_dict = {'ckpt':'ckpt', 'pb':'pb'}
 

@@ -16,5 +16,8 @@ backup/
 # local
 
 # folder
+ICBIP
+material
 code/dataset/train/
 code/dataset/test/
+code/dataset/*.txt
