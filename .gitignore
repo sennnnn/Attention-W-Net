@@ -16,6 +16,7 @@ backup/
 # local
 
 # folder
+# ICBIP 文件夹为相关文章信息 (原始数据以及原文等等)，已备份至个人百度网盘 MIACA/CSTRO/ICBIP 处
 ICBIP
 material
 code/dataset/train/
